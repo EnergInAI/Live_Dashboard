@@ -1,0 +1,195 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@500;600&display=swap');
+
+:root {
+  --primary-blue: #0d274d;
+  --accent-orange: #f28c28;
+  --accent-green: #28a745;
+  --background-light: #ffffff;
+  --background-soft: #fafafa;
+  --text-dark: #222;
+  --text-muted: #777;
+  --heading-font: 'Poppins', sans-serif;
+  --body-font: 'Inter', sans-serif;
+}
+
+/* Body */
+body {
+  margin: 0;
+  font-family: var(--body-font);
+  background: #f5f7fa;
+  color: var(--text-dark);
+}
+
+/* Dashboard Container */
+.dashboard-container {
+  max-width: 900px;
+  margin: 20px auto;
+  padding: 16px;
+}
+
+/* General Card Style */
+.card {
+  background: var(--background-light);
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(13, 39, 77, 0.06);
+  margin-bottom: 24px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(13, 39, 77, 0.1);
+}
+
+/* Greeting Card (refined version) */
+.greeting-card {
+  border: 2px solid var(--accent-orange);
+  background: var(--background-light);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.greeting-layout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.greeting-logo {
+  flex: 1 1 30%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.org-logo {
+  width: 100%;
+  max-width: 160px;
+  height: auto;
+  object-fit: contain;
+}
+
+.greeting-info {
+  flex: 1 1 65%;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.greeting-info h1 {
+  font-family: var(--heading-font);
+  font-weight: 600;
+  font-size: 1.6rem;
+  color: var(--text-dark);
+  margin: 0;
+}
+
+.greeting-info h3 {
+  font-family: var(--body-font);
+  font-weight: 400;
+  color: var(--accent-orange);
+  margin-top: 8px;
+  font-size: 1rem;
+}
+
+/* Responsive: stack logo above text on small screens */
+@media (max-width: 600px) {
+  .greeting-layout {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .greeting-logo {
+    flex: 0 0 auto;
+  }
+
+  .org-logo {
+    max-width: 120px;
+  }
+
+  .greeting-info {
+    text-align: center;
+  }
+}
+
+
+/* Section Titles */
+.section-title {
+  font-family: var(--heading-font);
+  font-weight: 600;
+  font-size: 1.2rem;
+  margin: 0 0 16px;
+  border-left: 5px solid var(--accent-orange);
+  padding-left: 10px;
+}
+
+.consumption-title {
+  color: var(--accent-orange);
+}
+
+.generation-title {
+  color: var(--accent-green);
+  border-color: var(--accent-green);
+}
+
+/* Metrics Grid */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 600px) {
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Metric Tiles */
+.metric-tile {
+  background: var(--background-soft);
+  border-radius: 14px;
+  padding: 14px 10px;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(13, 39, 77, 0.04);
+  transition: all 0.2s ease;
+}
+
+.metric-tile:hover {
+  background: #fff5e9;
+  transform: translateY(-2px);
+}
+
+.metric-label {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.metric-value {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--primary-blue);
+  margin-top: 4px;
+}
+
+/* Timestamp */
+.timestamp {
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 10px;
+}
+
+/* Status Texts */
+.error,
+.loading,
+.no-data {
+  text-align: center;
+  padding: 40px;
+  color: var(--primary-blue);
+}
