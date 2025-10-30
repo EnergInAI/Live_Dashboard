@@ -19,20 +19,35 @@ interface EnergyPayload {
 }
 
 const Dashboard: React.FC = () => {
+  // Try to read deviceId from URL first
   const queryParams = new URLSearchParams(window.location.search);
-  const deviceId = queryParams.get('deviceId') || '';
+  const urlDeviceId = queryParams.get('deviceId');
 
+  // Fallback to localStorage if not in URL
+  const [deviceId, setDeviceId] = useState<string | null>(
+    urlDeviceId || localStorage.getItem('deviceId')
+  );
   const [username, setUsername] = useState('Guest User');
   const [data, setData] = useState<EnergyPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Persist deviceId if it came from URL
+  useEffect(() => {
+    if (urlDeviceId) {
+      localStorage.setItem('deviceId', urlDeviceId);
+      setDeviceId(urlDeviceId);
+    }
+  }, [urlDeviceId]);
+
+  // Fetch data once deviceId is available
   useEffect(() => {
     if (!deviceId) {
-      setError('Device ID not provided in URL');
+      setError('Device ID not provided in URL or local storage');
       setLoading(false);
       return;
     }
+
     setUsername(userMap[deviceId] ?? 'Unknown User');
 
     fetch(
@@ -60,31 +75,46 @@ const Dashboard: React.FC = () => {
       });
   }, [deviceId]);
 
-  if (error) return <div className="error">{error}</div>;
-  if (loading) return <div className="loading">Loading data for device: {deviceId}...</div>;
+  if (error)
+    return (
+      <div className="error">
+        <h3>{error}</h3>
+        {!deviceId && (
+          <p>
+            Please open this app using your unique link containing the
+            <code>?deviceId=</code> parameter.
+          </p>
+        )}
+      </div>
+    );
+
+  if (loading)
+    return (
+      <div className="loading">
+        Loading data for device: <strong>{deviceId}</strong>...
+      </div>
+    );
+
   if (!data) return <div className="no-data">No data available</div>;
 
   return (
     <div className="dashboard-container">
       {/* Greeting Section */}
-
-<div className="card greeting-card">
-  <div className="greeting-layout">
-    <div className="greeting-logo">
-      <img
-        src={`${process.env.PUBLIC_URL}/logo.svg`}
-        alt="Organization Logo"
-        className="org-logo"
-      />
-    </div>
-    <div className="greeting-info">
-      <h1>Welcome, {username}</h1>
-      <h3>Device ID: {deviceId}</h3>
-    </div>
-  </div>
-</div>
-
-
+      <div className="card greeting-card">
+        <div className="greeting-layout">
+          <div className="greeting-logo">
+            <img
+              src={`${process.env.PUBLIC_URL}/logo192.png`}
+              alt="Organization Logo"
+              className="org-logo"
+            />
+          </div>
+          <div className="greeting-info">
+            <h1>Welcome, {username}</h1>
+            <h3>Device ID: {deviceId}</h3>
+          </div>
+        </div>
+      </div>
 
       {/* Consumption Metrics */}
       <div className="card metrics-card">
