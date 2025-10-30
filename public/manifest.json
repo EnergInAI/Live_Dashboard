@@ -1,6 +1,6 @@
 {
-  "short_name": "EnergInAI Live Dashboard",
-  "name": "Live Load Consumption and Solar Generation Data",
+  "short_name": "EnergInAI",
+  "name": "EnergInAI Live Dashboard",
   "icons": [
     {
       "src": "favicon.ico",

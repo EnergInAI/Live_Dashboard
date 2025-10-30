@@ -104,8 +104,8 @@ const Dashboard: React.FC = () => {
         <div className="greeting-layout">
           <div className="greeting-logo">
             <img
-              src={`${process.env.PUBLIC_URL}/logo192.png`}
-              alt="Organization Logo"
+              src="/logo.png"
+              alt="EnergInAI"
               className="org-logo"
             />
           </div>
