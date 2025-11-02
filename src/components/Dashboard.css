@@ -1,98 +1,101 @@
-/* --- General Layout --- */
+/* ================================
+   DASHBOARD - RESTORED ORIGINAL
+   ================================ */
+
+/* --- Base Layout --- */
 .dashboard-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
   padding: 20px;
+  background-color: #f4f6f8; /* back to light background */
   min-height: 100vh;
   font-family: "Poppins", sans-serif;
-  background-color: #0b0b0b;
-  color: #ffffff;
+  color: #1a1a1a;
 }
 
-/* Single section (non-solar) */
+/* For non-solar devices (6-pin layout) */
 .dashboard-container.single-section {
   justify-content: center;
 }
 
-/* --- Card Styles --- */
+/* --- Generic Card --- */
 .card {
-  background-color: #121212;
-  border-radius: 20px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
-  margin: 20px;
+  background-color: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  margin: 20px 0;
   padding: 20px;
-  width: 85%;
+  width: 90%;
   max-width: 1100px;
   transition: transform 0.2s ease-in-out;
 }
 
 .card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-3px);
 }
 
 /* --- Greeting Card --- */
 .greeting-card {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: linear-gradient(90deg, #181818, #121212);
-  padding: 25px 35px;
+  text-align: center;
+  padding: 30px 20px;
 }
 
 .greeting-layout {
   display: flex;
+  flex-direction: column; /* restored stack layout */
   align-items: center;
-  justify-content: space-between;
-  width: 100%;
+  justify-content: center;
 }
 
 .greeting-logo {
-  flex: 1;
-  display: flex;
-  justify-content: flex-start;
+  margin-bottom: 15px;
 }
 
 .org-logo {
-  width: 140px;
+  width: 150px;
   height: auto;
-  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.2));
-}
-
-.greeting-info {
-  flex: 2;
-  text-align: right;
 }
 
 .greeting-info h1 {
-  font-size: 1.9rem;
-  margin-bottom: 5px;
-  color: #fff;
+  font-size: 1.8rem;
+  margin: 5px 0;
+  color: #1a1a1a;
 }
 
 .greeting-info h3 {
   font-size: 1rem;
-  color: #ccc;
+  color: #555;
 }
 
-/* --- Net Summary Card --- */
+/* ================================
+   NEW: NET SUMMARY CARD
+   ================================ */
 .net-summary-card {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: #181818;
-  border: 1px solid #222;
-  padding: 20px 30px;
+  background-color: #ffffff;
   border-radius: 16px;
-  width: 85%;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  margin: 15px 0;
+  padding: 20px 30px;
+  width: 90%;
   max-width: 1100px;
-  margin-top: 10px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.net-left,
+.net-right {
+  flex: 1;
 }
 
 .net-left {
-  flex: 1;
+  text-align: left;
+}
+
+.net-right {
+  text-align: right;
 }
 
 .net-heading {
@@ -100,62 +103,49 @@
   font-weight: 600;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 
-.net-heading .arrow {
-  font-size: 1.2rem;
-  margin-left: 4px;
-}
-
-.net-import {
+.net-import .net-heading {
   color: #ff9800; /* orange for import */
 }
 
-.net-export {
+.net-export .net-heading {
   color: #4caf50; /* green for export */
+}
+
+.net-arrow {
+  font-size: 1.1rem;
 }
 
 .net-value {
   font-size: 2rem;
   font-weight: bold;
-  margin-top: 4px;
-}
-
-.net-right {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+  color: #1a1a1a;
+  margin-top: 5px;
 }
 
 .net-metric {
-  font-size: 0.95rem;
-  margin-bottom: 4px;
+  font-size: 1rem;
+  margin: 3px 0;
+  color: #1a1a1a;
 }
 
 .net-metric span {
-  font-weight: 600;
+  font-weight: 500;
+  color: #333; /* numbers neutral, not colored */
 }
 
-.net-consumed {
-  color: #ff9800;
-}
-
-.net-generated {
-  color: #4caf50;
-}
-
-/* --- Metric Card --- */
+/* --- Metrics Section --- */
 .metrics-card {
-  width: 85%;
+  width: 90%;
   max-width: 1100px;
 }
 
 .section-title {
-  text-align: left;
   font-size: 1.4rem;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
+  font-weight: 600;
 }
 
 .consumption-title {
@@ -166,36 +156,39 @@
   color: #4caf50;
 }
 
+/* --- Grid Layout --- */
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 20px;
 }
 
 .metric-tile {
-  background-color: #1a1a1a;
+  background-color: #fafafa;
   border-radius: 12px;
   padding: 16px;
   text-align: center;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
 .metric-label {
   font-size: 0.9rem;
-  color: #bbb;
+  color: #666;
+  margin-bottom: 5px;
 }
 
 .metric-value {
-  font-size: 1.4rem;
+  font-size: 1.3rem;
   font-weight: 600;
-  margin-top: 4px;
-  color: #fff;
+  color: #1a1a1a;
 }
 
 /* --- Timestamp --- */
 .timestamp {
   margin-top: 10px;
-  color: #aaa;
+  color: #666;
   font-size: 0.9rem;
+  text-align: center;
 }
 
 /* --- Access Denied --- */
@@ -204,21 +197,26 @@
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  background-color: #181818;
-  color: #fff;
+  background-color: #ffffff;
+  color: #1a1a1a;
   border-radius: 16px;
   padding: 40px;
   width: 90%;
   max-width: 500px;
-  margin: 120px auto;
+  margin: 100px auto;
   text-align: center;
-  box-shadow: 0 0 12px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .error-card h2 {
   font-size: 1.6rem;
   color: #ff4d4d;
   margin-bottom: 12px;
+}
+
+.error-card p {
+  font-size: 1rem;
+  color: #333;
 }
 
 .error-card a {
@@ -231,11 +229,11 @@
   text-decoration: underline;
 }
 
-/* --- Loading/Error Text --- */
+/* --- Loading / Error Text --- */
 .loading,
 .no-data,
 .error {
-  color: #bbb;
+  color: #666;
   font-size: 1.2rem;
   text-align: center;
   margin-top: 100px;
