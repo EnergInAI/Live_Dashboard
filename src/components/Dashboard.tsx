@@ -22,9 +22,6 @@ const Dashboard: React.FC = () => {
   const [accessDenied, setAccessDenied] = useState(false);
   const [username, setUsername] = useState<string>('Guest User');
 
-  /* -------------------------------------------------- */
-  /*  Save deviceId to local storage                    */
-  /* -------------------------------------------------- */
   useEffect(() => {
     if (urlDeviceId) {
       localStorage.setItem('deviceId', urlDeviceId);
@@ -32,9 +29,6 @@ const Dashboard: React.FC = () => {
     }
   }, [urlDeviceId]);
 
-  /* -------------------------------------------------- */
-  /*  Token validation                                  */
-  /* -------------------------------------------------- */
   useEffect(() => {
     if (!deviceId || !urlToken) {
       setAccessDenied(true);
@@ -50,9 +44,6 @@ const Dashboard: React.FC = () => {
     setUsername(deviceEntry.name);
   }, [deviceId, urlToken]);
 
-  /* -------------------------------------------------- */
-  /*  Fetch data from Lambda / API Gateway              */
-  /* -------------------------------------------------- */
   useEffect(() => {
     if (!deviceId || accessDenied) return;
 
@@ -81,13 +72,8 @@ const Dashboard: React.FC = () => {
       });
   }, [deviceId, accessDenied]);
 
-  /* -------------------------------------------------- */
-  /*  Conditional renders for states                    */
-  /* -------------------------------------------------- */
-  if (accessDenied)
-    return (
-      <AccessDenied message="Your trial has expired or you do not have permission to access this device." />
-    );
+  /* ✅ Use your AccessDenied.tsx defaults (no override message) */
+  if (accessDenied) return <AccessDenied />;
 
   if (error)
     return (
@@ -105,26 +91,16 @@ const Dashboard: React.FC = () => {
 
   if (!data) return <div className="no-data">No data available</div>;
 
-  /* -------------------------------------------------- */
-  /*  ✅ Robust prefix-based device-type detection       */
-  /* -------------------------------------------------- */
+  // Prefix-based detection
   const devicePrefix = deviceId?.slice(0, 4)?.toUpperCase() || '';
-
   const isSolarDevice = devicePrefix === 'ENSN' || devicePrefix === 'ENTN';
   const isNonSolarDevice = devicePrefix === 'ENSS' || devicePrefix === 'ENTA';
-  const isGenerationOnly = isSolarDevice && !isNonSolarDevice; // fallback case
 
-  /* -------------------------------------------------- */
-  /*  Display helpers                                   */
-  /* -------------------------------------------------- */
   const formattedTimestamp = new Date(data.timestamp as string).toLocaleString();
   const dashboardClass = isNonSolarDevice
     ? 'dashboard-container single-section'
     : 'dashboard-container';
 
-  /* -------------------------------------------------- */
-  /*  Render                                            */
-  /* -------------------------------------------------- */
   return (
     <div className={dashboardClass}>
       {/* Greeting Section */}
@@ -138,20 +114,18 @@ const Dashboard: React.FC = () => {
               <>
                 <h1>Welcome, {username}</h1>
                 <h3>Device ID: {deviceId}</h3>
-                <h4 style={{ color: '#28a745' }}>Solar Device</h4>
               </>
             ) : (
               <>
                 <h1>Welcome to your dashboard</h1>
                 <h3>Monitor your devices right from your phone.</h3>
-                <h4 style={{ color: '#f28c28' }}>Non-Solar Device</h4>
               </>
             )}
           </div>
         </div>
       </div>
 
-      {/* ✅ Consumption Metrics (always shown) */}
+      {/* Consumption Metrics */}
       <div className="card metrics-card">
         <h2 className="section-title consumption-title">Consumption</h2>
         <div className="metrics-grid">
@@ -164,7 +138,7 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* ✅ Generation Metrics (only for solar devices) */}
+      {/* Generation Metrics */}
       {isSolarDevice && (
         <div className="card metrics-card">
           <h2 className="section-title generation-title">Generation</h2>
@@ -183,15 +157,11 @@ const Dashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Timestamp */}
       <div className="timestamp">Last updated: {formattedTimestamp}</div>
     </div>
   );
 };
 
-/* -------------------------------------------------- */
-/*  Metric Sub-Component                              */
-/* -------------------------------------------------- */
 interface MetricProps {
   label: string;
   value: number | string | null | undefined;
