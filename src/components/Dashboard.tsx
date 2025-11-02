@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import userMap from '../userMap';
 import AccessDenied from './AccessDenied';
+import { updateTotals, getTotals } from '../utils/solarAgg'; // our new aggregator
 import './Dashboard.css';
 
 interface EnergyPayload {
@@ -21,7 +22,12 @@ const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
   const [username, setUsername] = useState<string>('Guest User');
+  const [totals, setTotals] = useState<{ totalConsumption: number; totalGeneration: number }>({
+    totalConsumption: 0,
+    totalGeneration: 0,
+  });
 
+  /* Store DeviceID in local storage */
   useEffect(() => {
     if (urlDeviceId) {
       localStorage.setItem('deviceId', urlDeviceId);
@@ -29,6 +35,7 @@ const Dashboard: React.FC = () => {
     }
   }, [urlDeviceId]);
 
+  /* Token verification */
   useEffect(() => {
     if (!deviceId || !urlToken) {
       setAccessDenied(true);
@@ -44,35 +51,52 @@ const Dashboard: React.FC = () => {
     setUsername(deviceEntry.name);
   }, [deviceId, urlToken]);
 
+  /* Fetch Data */
   useEffect(() => {
     if (!deviceId || accessDenied) return;
 
-    fetch(
-      `https://lqqhlwp62i.execute-api.ap-south-1.amazonaws.com/prod_v1/devicedata?deviceId=${deviceId}&limit=1`
-    )
-      .then(async (res) => {
-        if (!res.ok) {
-          const errText = await res.text();
-          throw new Error(`API error: ${res.status} ${errText}`);
-        }
-        return res.json();
-      })
-      .then((responseData) => {
-        if (!Array.isArray(responseData) || responseData.length === 0) {
-          setError('No data received from API');
+    const fetchData = () => {
+      fetch(
+        `https://lqqhlwp62i.execute-api.ap-south-1.amazonaws.com/prod_v1/devicedata?deviceId=${deviceId}&limit=1`
+      )
+        .then(async (res) => {
+          if (!res.ok) {
+            const errText = await res.text();
+            throw new Error(`API error: ${res.status} ${errText}`);
+          }
+          return res.json();
+        })
+        .then((responseData) => {
+          if (!Array.isArray(responseData) || responseData.length === 0) {
+            setError('No data received from API');
+            setLoading(false);
+            return;
+          }
+
+          const latestData = responseData[0];
+          setData(latestData);
+
+          // Update totals for solar devices
+          const prefix = deviceId.slice(0, 4).toUpperCase();
+          if (prefix === 'ENSN' || prefix === 'ENTN') {
+            updateTotals(deviceId, latestData);
+            setTotals(getTotals(deviceId));
+          }
+
           setLoading(false);
-          return;
-        }
-        setData(responseData[0]);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message);
-        setLoading(false);
-      });
+        })
+        .catch((err) => {
+          setError(err.message);
+          setLoading(false);
+        });
+    };
+
+    fetchData();
+    const interval = setInterval(fetchData, 10000); // 10s live update
+    return () => clearInterval(interval);
   }, [deviceId, accessDenied]);
 
-  /* ✅ Use your AccessDenied.tsx defaults (no override message) */
+  /* Access denied view */
   if (accessDenied) return <AccessDenied />;
 
   if (error)
@@ -91,15 +115,19 @@ const Dashboard: React.FC = () => {
 
   if (!data) return <div className="no-data">No data available</div>;
 
-  // Prefix-based detection
+  /* Device-type detection */
   const devicePrefix = deviceId?.slice(0, 4)?.toUpperCase() || '';
   const isSolarDevice = devicePrefix === 'ENSN' || devicePrefix === 'ENTN';
-  const isNonSolarDevice = devicePrefix === 'ENSS' || devicePrefix === 'ENTA';
+  const isNonSolarDevice = devicePrefix === 'ENSA' || devicePrefix === 'ENTA';
 
   const formattedTimestamp = new Date(data.timestamp as string).toLocaleString();
   const dashboardClass = isNonSolarDevice
     ? 'dashboard-container single-section'
     : 'dashboard-container';
+
+  // Calculate net import/export
+  const net = totals.totalConsumption - totals.totalGeneration;
+  const isImport = net >= 0;
 
   return (
     <div className={dashboardClass}>
@@ -124,6 +152,32 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Net Summary Card — only for Solar Devices */}
+      {isSolarDevice && (
+        <div className="card net-summary-card">
+          <div className="net-left">
+            <div
+              className={`net-heading ${isImport ? 'net-import' : 'net-export'}`}
+            >
+              {isImport ? 'Net Import' : 'Net Export'}
+              <span className="arrow">{isImport ? '⬆' : '⬇'}</span>
+            </div>
+            <div className="net-value">
+              {Math.abs(net).toFixed(3)} kWh
+            </div>
+          </div>
+
+          <div className="net-right">
+            <div className="net-metric net-consumed">
+              Total Consumed: <span>{totals.totalConsumption.toFixed(3)} kWh</span>
+            </div>
+            <div className="net-metric net-generated">
+              Total Produced: <span>{totals.totalGeneration.toFixed(3)} kWh</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Consumption Metrics */}
       <div className="card metrics-card">
