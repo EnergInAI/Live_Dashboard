@@ -1,12 +1,12 @@
 import React from 'react';
-import './Dashboard.css';
+import '../styles/AccessDenied.css';
 
 interface AccessDeniedProps {
   message?: string;
 }
 
 const AccessDenied: React.FC<AccessDeniedProps> = ({
-  message = "Contact us for the Next Steps and We'll get you Saving."
+  message = "Contact us for the Next Steps and We'll get you Saving.",
 }) => {
   return (
     <div className="error-card">

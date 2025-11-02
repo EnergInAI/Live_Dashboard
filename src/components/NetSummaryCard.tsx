@@ -1,5 +1,6 @@
 import React from 'react';
-import './Dashboard.css'; // Reuse your existing styles for colors, cards, fonts, etc.
+import '../styles/NetSummaryCard.css';
+
 
 interface NetSummaryCardProps {
   netEnergy: number;          // Net energy (kWh) = Generation - Consumption

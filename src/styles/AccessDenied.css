@@ -1,0 +1,69 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@500;600&display=swap');
+
+:root {
+  --primary-blue: #0d274d;
+  --accent-orange: #f28c28;
+  --accent-green: #28a745;
+  --background-light: #ffffff;
+  --text-dark: #222;
+  --text-muted: #777;
+  --heading-font: 'Poppins', sans-serif;
+  --body-font: 'Inter', sans-serif;
+}
+
+/* Page Container */
+.error-card {
+  max-width: 600px;
+  margin: 100px auto;
+  background: var(--background-light);
+  border-radius: 18px;
+  box-shadow: 0 4px 12px rgba(13, 39, 77, 0.08);
+  border: 2px solid var(--accent-orange);
+  padding: 40px 30px;
+  text-align: center;
+  font-family: var(--body-font);
+  color: var(--text-dark);
+}
+
+/* Heading */
+.error-card h2 {
+  font-family: var(--heading-font);
+  font-weight: 600;
+  color: var(--accent-orange);
+  font-size: 1.6rem;
+  margin-bottom: 12px;
+}
+
+/* Message Text */
+.error-card p {
+  font-size: 1rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+/* Link Styling */
+.error-card a {
+  color: var(--accent-green);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.error-card a:hover {
+  text-decoration: underline;
+}
+
+/* Responsive Centering */
+@media (max-width: 600px) {
+  .error-card {
+    margin: 60px 16px;
+    padding: 30px 20px;
+  }
+
+  .error-card h2 {
+    font-size: 1.4rem;
+  }
+
+  .error-card p {
+    font-size: 0.95rem;
+  }
+}

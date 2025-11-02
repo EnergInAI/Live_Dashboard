@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import userMap from '../userMap';
 import AccessDenied from './AccessDenied';
-import { updateTotals, getTotals } from '../utils/solarAgg'; // our new aggregator
-import './Dashboard.css';
+import NetSummaryCard from './NetSummaryCard';
+import '../styles/Dashboard.css';
+import { updateTotals, getTotals } from '../utils/solarAgg';
 
 interface EnergyPayload {
   [key: string]: number | string | null;
@@ -22,12 +23,16 @@ const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
   const [username, setUsername] = useState<string>('Guest User');
-  const [totals, setTotals] = useState<{ totalConsumption: number; totalGeneration: number }>({
-    totalConsumption: 0,
-    totalGeneration: 0,
+
+  // For net totals (used in NetSummaryCard)
+  const [totals, setTotals] = useState({
+    net: 0,
+    netType: '',
+    totalConsumed: 0,
+    totalGenerated: 0,
   });
 
-  /* Store DeviceID in local storage */
+  // Store deviceId in localStorage if available
   useEffect(() => {
     if (urlDeviceId) {
       localStorage.setItem('deviceId', urlDeviceId);
@@ -35,7 +40,7 @@ const Dashboard: React.FC = () => {
     }
   }, [urlDeviceId]);
 
-  /* Token verification */
+  // Validate access based on userMap
   useEffect(() => {
     if (!deviceId || !urlToken) {
       setAccessDenied(true);
@@ -51,87 +56,58 @@ const Dashboard: React.FC = () => {
     setUsername(deviceEntry.name);
   }, [deviceId, urlToken]);
 
-  /* Fetch Data */
+  // Fetch latest device data
   useEffect(() => {
     if (!deviceId || accessDenied) return;
 
-    const fetchData = () => {
-      fetch(
-        `https://lqqhlwp62i.execute-api.ap-south-1.amazonaws.com/prod_v1/devicedata?deviceId=${deviceId}&limit=1`
-      )
-        .then(async (res) => {
-          if (!res.ok) {
-            const errText = await res.text();
-            throw new Error(`API error: ${res.status} ${errText}`);
-          }
-          return res.json();
-        })
-        .then((responseData) => {
-          if (!Array.isArray(responseData) || responseData.length === 0) {
-            setError('No data received from API');
-            setLoading(false);
-            return;
-          }
-
-          const latestData = responseData[0];
-          setData(latestData);
-
-          // Update totals for solar devices
-          const prefix = deviceId.slice(0, 4).toUpperCase();
-          if (prefix === 'ENSN' || prefix === 'ENTN') {
-            updateTotals(deviceId, latestData);
-            setTotals(getTotals(deviceId));
-          }
-
+    fetch(
+      `https://lqqhlwp62i.execute-api.ap-south-1.amazonaws.com/prod_v1/devicedata?deviceId=${deviceId}&limit=1`
+    )
+      .then(async (res) => {
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(`API error: ${res.status} ${errText}`);
+        }
+        return res.json();
+      })
+      .then((responseData) => {
+        if (!Array.isArray(responseData) || responseData.length === 0) {
+          setError('No data received from API');
           setLoading(false);
-        })
-        .catch((err) => {
-          setError(err.message);
-          setLoading(false);
-        });
-    };
+          return;
+        }
 
-    fetchData();
-    const interval = setInterval(fetchData, 10000); // 10s live update
-    return () => clearInterval(interval);
+        const latestData = responseData[0];
+        setData(latestData);
+        setLoading(false);
+
+        const prefix = deviceId.slice(0, 4).toUpperCase();
+        if (prefix === 'ENSN' || prefix === 'ENTN') {
+          updateTotals(deviceId, latestData);
+          setTotals(getTotals(deviceId));
+        }
+      })
+      .catch((err) => {
+        setError(err.message);
+        setLoading(false);
+      });
   }, [deviceId, accessDenied]);
 
-  /* Access denied view */
+  // UI States
   if (accessDenied) return <AccessDenied />;
-
-  if (error)
-    return (
-      <div className="error">
-        <h3>{error}</h3>
-      </div>
-    );
-
-  if (loading)
-    return (
-      <div className="loading">
-        Loading data for device: <strong>{deviceId}</strong>...
-      </div>
-    );
-
+  if (error) return <div className="error"><h3>{error}</h3></div>;
+  if (loading) return <div className="loading">Loading data for device: <strong>{deviceId}</strong>...</div>;
   if (!data) return <div className="no-data">No data available</div>;
 
-  /* Device-type detection */
-  const devicePrefix = deviceId?.slice(0, 4)?.toUpperCase() || '';
-  const isSolarDevice = devicePrefix === 'ENSN' || devicePrefix === 'ENTN';
-  const isNonSolarDevice = devicePrefix === 'ENSA' || devicePrefix === 'ENTA';
-
+  // Device type
+  const prefix = deviceId?.slice(0, 4)?.toUpperCase() || '';
+  const isSolarDevice = prefix === 'ENSN' || prefix === 'ENTN';
+  const isNonSolarDevice = prefix === 'ENSS' || prefix === 'ENTA';
   const formattedTimestamp = new Date(data.timestamp as string).toLocaleString();
-  const dashboardClass = isNonSolarDevice
-    ? 'dashboard-container single-section'
-    : 'dashboard-container';
-
-  // Calculate net import/export
-  const net = totals.totalConsumption - totals.totalGeneration;
-  const isImport = net >= 0;
 
   return (
-    <div className={dashboardClass}>
-      {/* Greeting Section */}
+    <div className="dashboard-container">
+      {/* Greeting Card */}
       <div className="card greeting-card">
         <div className="greeting-layout">
           <div className="greeting-logo">
@@ -153,33 +129,16 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Net Summary Card — only for Solar Devices */}
+      {/* ✅ New Net Summary Card — visible only for Solar Devices */}
       {isSolarDevice && (
-        <div className="card net-summary-card">
-          <div className="net-left">
-            <div
-              className={`net-heading ${isImport ? 'net-import' : 'net-export'}`}
-            >
-              {isImport ? 'Net Import' : 'Net Export'}
-              <span className="arrow">{isImport ? '⬆' : '⬇'}</span>
-            </div>
-            <div className="net-value">
-              {Math.abs(net).toFixed(3)} kWh
-            </div>
-          </div>
-
-          <div className="net-right">
-            <div className="net-metric net-consumed">
-              Total Consumed: <span>{totals.totalConsumption.toFixed(3)} kWh</span>
-            </div>
-            <div className="net-metric net-generated">
-              Total Produced: <span>{totals.totalGeneration.toFixed(3)} kWh</span>
-            </div>
-          </div>
-        </div>
+        <NetSummaryCard
+          netEnergy={totals.net}
+          totalConsumed={totals.totalConsumed}
+          totalGenerated={totals.totalGenerated}
+        />
       )}
 
-      {/* Consumption Metrics */}
+      {/* Consumption Section */}
       <div className="card metrics-card">
         <h2 className="section-title consumption-title">Consumption</h2>
         <div className="metrics-grid">
@@ -192,7 +151,7 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Generation Metrics */}
+      {/* Generation Section (Solar only) */}
       {isSolarDevice && (
         <div className="card metrics-card">
           <h2 className="section-title generation-title">Generation</h2>
@@ -200,11 +159,7 @@ const Dashboard: React.FC = () => {
             <Metric label="Voltage (V)" value={data.Generation_V} unit="V" />
             <Metric label="Current (I)" value={data.Generation_I} unit="A" />
             <Metric label="Power (P)" value={data.Generation_P} unit="W" />
-            <Metric
-              label="Units (kWh)"
-              value={data.Generation_kWh}
-              unit="kWh"
-            />
+            <Metric label="Units (kWh)" value={data.Generation_kWh} unit="kWh" />
             <Metric label="Power Factor (PF)" value={data.Generation_PF} />
             <Metric label="Frequency (F)" value={data.Generation_F} unit="Hz" />
           </div>
@@ -216,6 +171,7 @@ const Dashboard: React.FC = () => {
   );
 };
 
+// Metric Component
 interface MetricProps {
   label: string;
   value: number | string | null | undefined;
@@ -223,8 +179,7 @@ interface MetricProps {
 }
 
 const Metric: React.FC<MetricProps> = ({ label, value, unit }) => {
-  const displayValue =
-    value === null || value === undefined || value === '' ? '-' : value;
+  const displayValue = value === null || value === undefined || value === '' ? '-' : value;
   return (
     <div className="metric-tile">
       <div className="metric-label">{label}</div>

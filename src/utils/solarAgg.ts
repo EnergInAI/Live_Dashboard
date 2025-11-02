@@ -1,73 +1,45 @@
-// solarAgg.ts
-// Correct incremental energy tracking with delta computation
+// src/utils/solarAgg.ts
 
-interface EnergyData {
-  timestamp?: string;
-  Consumption_kWh?: number;
-  Generation_kWh?: number;
-}
-
-interface Totals {
-  lastTimestamp?: string;
-  lastConsumption?: number;
-  lastGeneration?: number;
+interface Aggregates {
   totalConsumed: number;
   totalGenerated: number;
+  net: number;
+  netType: string;
 }
 
-const solarTotals: Record<string, Totals> = {};
+// Store per-device aggregates
+const deviceTotals: Record<string, Aggregates> = {};
 
-export function updateTotals(deviceId: string, data: EnergyData): void {
-  if (!deviceId || !data) return;
-
-  const newTimestamp = data.timestamp || '';
-  const newConsumption = Number(data.Consumption_kWh) || 0;
-  const newGeneration = Number(data.Generation_kWh) || 0;
-
-  if (!solarTotals[deviceId]) {
-    // First time entry — initialize
-    solarTotals[deviceId] = {
-      lastTimestamp: newTimestamp,
-      lastConsumption: newConsumption,
-      lastGeneration: newGeneration,
+export function updateTotals(deviceId: string, data: any) {
+  if (!deviceTotals[deviceId]) {
+    deviceTotals[deviceId] = {
       totalConsumed: 0,
       totalGenerated: 0,
+      net: 0,
+      netType: '',
     };
-    return;
   }
 
-  const deviceTotals = solarTotals[deviceId];
+  const consumption = parseFloat(data?.Consumption_kWh) || 0;
+  const generation = parseFloat(data?.Generation_kWh) || 0;
 
-  // Ignore identical timestamps (no new reading)
-  if (newTimestamp === deviceTotals.lastTimestamp) return;
+  deviceTotals[deviceId].totalConsumed += consumption;
+  deviceTotals[deviceId].totalGenerated += generation;
 
-  // Compute delta since last reading
-  const deltaC = Math.max(0, newConsumption - (deviceTotals.lastConsumption || 0));
-  const deltaG = Math.max(0, newGeneration - (deviceTotals.lastGeneration || 0));
+  const net = deviceTotals[deviceId].totalGenerated - deviceTotals[deviceId].totalConsumed;
 
-  // Add deltas to running totals
-  deviceTotals.totalConsumed += deltaC;
-  deviceTotals.totalGenerated += deltaG;
-
-  // Update last known values
-  deviceTotals.lastConsumption = newConsumption;
-  deviceTotals.lastGeneration = newGeneration;
-  deviceTotals.lastTimestamp = newTimestamp;
-
-  solarTotals[deviceId] = deviceTotals;
+  deviceTotals[deviceId].net = net;
+  deviceTotals[deviceId].netType = net > 0 ? 'export' : net < 0 ? 'import' : 'neutral';
 }
 
-export function getTotals(deviceId: string): {
-  totalConsumption: number;
-  totalGeneration: number;
-} {
-  const totals = solarTotals[deviceId];
-  if (!totals) {
-    return { totalConsumption: 0, totalGeneration: 0 };
-  }
-
-  return {
-    totalConsumption: totals.totalConsumed,
-    totalGeneration: totals.totalGenerated,
-  };
+export function getTotals(deviceId: string) {
+  // ✅ Always return full shape expected by Dashboard
+  return (
+    deviceTotals[deviceId] || {
+      totalConsumed: 0,
+      totalGenerated: 0,
+      net: 0,
+      netType: '',
+    }
+  );
 }

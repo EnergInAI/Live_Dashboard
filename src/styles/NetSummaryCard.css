@@ -1,0 +1,140 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@500;600&display=swap');
+
+:root {
+  --primary-blue: #0d274d;
+  --accent-orange: #f28c28;
+  --accent-green: #28a745;
+  --background-light: #ffffff;
+  --background-soft: #fafafa;
+  --text-dark: #222;
+  --text-muted: #777;
+  --heading-font: 'Poppins', sans-serif;
+  --body-font: 'Inter', sans-serif;
+}
+
+/* ============= NET SUMMARY CARD ============= */
+.net-summary-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: 24px 28px;
+  border: 2px solid var(--accent-orange);
+  border-radius: 18px;
+  box-shadow: 0 4px 12px rgba(13, 39, 77, 0.06);
+  background: var(--background-light);
+  margin-bottom: 26px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.net-summary-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(13, 39, 77, 0.1);
+}
+
+/* Left section (Net details) */
+.net-card-left {
+  flex: 1 1 50%;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+}
+
+.net-heading {
+  font-family: var(--heading-font);
+  font-weight: 600;
+  font-size: 1.4rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.net-heading.import {
+  color: var(--accent-orange);
+}
+
+.net-heading.export {
+  color: var(--accent-green);
+}
+
+.net-heading.neutral {
+  color: var(--primary-blue);
+}
+
+.net-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--primary-blue);
+  margin-top: 2px;
+}
+
+.net-comment {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+/* Right section (Totals) */
+.net-card-right {
+  flex: 1 1 45%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: right;
+  gap: 10px;
+}
+
+.net-totals {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.total-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 1rem;
+}
+
+.total-label {
+  font-family: var(--body-font);
+  font-weight: 500;
+}
+
+.total-value {
+  font-weight: 600;
+  color: var(--primary-blue);
+}
+
+.orange-text {
+  color: var(--accent-orange);
+}
+
+.green-text {
+  color: var(--accent-green);
+}
+
+/* Responsive adjustments */
+@media (max-width: 700px) {
+  .net-summary-card {
+    flex-direction: column;
+    text-align: center;
+    padding: 20px;
+  }
+
+  .net-card-left,
+  .net-card-right {
+    text-align: center;
+  }
+
+  .total-line {
+    justify-content: center;
+    gap: 8px;
+  }
+}
