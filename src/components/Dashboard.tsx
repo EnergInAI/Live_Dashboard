@@ -138,6 +138,11 @@ const Dashboard: React.FC = () => {
         />
       )}
 
+      {/* For non-solar devices, keep spacing/layout balanced */}
+      {isNonSolarDevice && (
+        <div style={{ marginBottom: '16px' }} />
+      )}
+
       {/* Consumption Section */}
       <div className="card metrics-card">
         <h2 className="section-title consumption-title">Consumption</h2>
