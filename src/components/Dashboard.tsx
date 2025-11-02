@@ -1,38 +1,27 @@
 import React, { useEffect, useState } from 'react';
 import userMap from '../userMap';
+import AccessDenied from './AccessDenied';
 import './Dashboard.css';
 
 interface EnergyPayload {
-  Consumption_F: number;
-  Generation_F: number;
-  Consumption_I: number;
-  Consumption_PF: number;
-  Consumption_P: number;
-  Consumption_V: number;
-  Consumption_kWh: number;
-  Generation_V: number;
-  Generation_kWh: number;
-  Generation_P: number;
-  Generation_PF: number;
-  Generation_I: number;
+  [key: string]: number | string | null;
   timestamp: string;
 }
 
 const Dashboard: React.FC = () => {
-  // Try to read deviceId from URL first
   const queryParams = new URLSearchParams(window.location.search);
   const urlDeviceId = queryParams.get('deviceId');
+  const urlToken = queryParams.get('token');
 
-  // Fallback to localStorage if not in URL
   const [deviceId, setDeviceId] = useState<string | null>(
     urlDeviceId || localStorage.getItem('deviceId')
   );
-  const [username, setUsername] = useState('Guest User');
   const [data, setData] = useState<EnergyPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [accessDenied, setAccessDenied] = useState(false);
+  const [username, setUsername] = useState<string>('Guest User');
 
-  // Persist deviceId if it came from URL
   useEffect(() => {
     if (urlDeviceId) {
       localStorage.setItem('deviceId', urlDeviceId);
@@ -40,15 +29,25 @@ const Dashboard: React.FC = () => {
     }
   }, [urlDeviceId]);
 
-  // Fetch data once deviceId is available
+  // Token validation
   useEffect(() => {
-    if (!deviceId) {
-      setError('Device ID not provided in URL or local storage');
-      setLoading(false);
+    if (!deviceId || !urlToken) {
+      setAccessDenied(true);
       return;
     }
 
-    setUsername(userMap[deviceId] ?? 'Unknown User');
+    const deviceEntry = userMap[deviceId];
+    if (!deviceEntry || deviceEntry.token !== urlToken) {
+      setAccessDenied(true);
+      return;
+    }
+
+    setUsername(deviceEntry.name);
+  }, [deviceId, urlToken]);
+
+  // Fetch data if access valid
+  useEffect(() => {
+    if (!deviceId || accessDenied) return;
 
     fetch(
       `https://lqqhlwp62i.execute-api.ap-south-1.amazonaws.com/prod_v1/devicedata?deviceId=${deviceId}&limit=1`
@@ -66,25 +65,24 @@ const Dashboard: React.FC = () => {
           setLoading(false);
           return;
         }
-        setData(responseData[0].payload);
+        setData(responseData[0]);
         setLoading(false);
       })
       .catch((err) => {
         setError(err.message);
         setLoading(false);
       });
-  }, [deviceId]);
+  }, [deviceId, accessDenied]);
+
+  if (accessDenied)
+    return (
+      <AccessDenied message="Your trial has expired or you do not have permission to access this device." />
+    );
 
   if (error)
     return (
       <div className="error">
         <h3>{error}</h3>
-        {!deviceId && (
-          <p>
-            Please open this app using your unique link containing the
-            <code>?deviceId=</code> parameter.
-          </p>
-        )}
       </div>
     );
 
@@ -97,69 +95,100 @@ const Dashboard: React.FC = () => {
 
   if (!data) return <div className="no-data">No data available</div>;
 
+  // Determine type
+  const hasGenerationData =
+    data.Generation_V !== null &&
+    data.Generation_V !== undefined &&
+    data.Generation_V !== 0;
+
+  const isGenerationOnly =
+    !data.Consumption_V && (deviceId?.startsWith('ENSA') || deviceId?.startsWith('ENTA'));
+  const isNonSolar = !hasGenerationData && !isGenerationOnly;
+
+  const formattedTimestamp = new Date(data.timestamp as string).toLocaleString();
+
+  // Dynamic layout
+  const dashboardClass = isNonSolar ? 'dashboard-container single-section' : 'dashboard-container';
+
   return (
-    <div className="dashboard-container">
+    <div className={dashboardClass}>
       {/* Greeting Section */}
       <div className="card greeting-card">
         <div className="greeting-layout">
           <div className="greeting-logo">
-            <img
-              src="/logo.png"
-              alt="EnergInAI"
-              className="org-logo"
-            />
+            <img src="/logo.png" alt="EnergInAI" className="org-logo" />
           </div>
           <div className="greeting-info">
-            <h1>Welcome, {username}</h1>
-            <h3>Device ID: {deviceId}</h3>
+            {isGenerationOnly ? (
+              <>
+                <h1>Welcome to your dashboard</h1>
+                <h3>Monitor your Home right from your Phone.</h3>
+              </>
+            ) : (
+              <>
+                <h1>Welcome, {username}</h1>
+                <h3>Device ID: {deviceId}</h3>
+                <h4 style={{ color: hasGenerationData ? '#28a745' : '#f28c28' }}>
+                  {hasGenerationData ? 'Solar Device' : 'Non-Solar Device'}
+                </h4>
+              </>
+            )}
           </div>
         </div>
       </div>
 
       {/* Consumption Metrics */}
-      <div className="card metrics-card">
-        <h2 className="section-title consumption-title">Consumption</h2>
-        <div className="metrics-grid">
-          <Metric label="Voltage (V)" value={data.Consumption_V} unit="V" />
-          <Metric label="Current (I)" value={data.Consumption_I} unit="A" />
-          <Metric label="Power (P)" value={data.Consumption_P} unit="W" />
-          <Metric label="Units (kWh)" value={data.Consumption_kWh} unit="kWh" />
-          <Metric label="Power Factor (PF)" value={data.Consumption_PF} />
-          <Metric label="Frequency (F)" value={data.Consumption_F} unit="Hz" />
+      {!isGenerationOnly && (
+        <div className="card metrics-card">
+          <h2 className="section-title consumption-title">Consumption</h2>
+          <div className="metrics-grid">
+            <Metric label="Voltage (V)" value={data.Consumption_V} unit="V" />
+            <Metric label="Current (I)" value={data.Consumption_I} unit="A" />
+            <Metric label="Power (P)" value={data.Consumption_P} unit="W" />
+            <Metric label="Units (kWh)" value={data.Consumption_kWh} unit="kWh" />
+            <Metric label="Power Factor (PF)" value={data.Consumption_PF} />
+            <Metric label="Frequency (F)" value={data.Consumption_F} unit="Hz" />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Generation Metrics */}
-      <div className="card metrics-card">
-        <h2 className="section-title generation-title">Generation</h2>
-        <div className="metrics-grid">
-          <Metric label="Voltage (V)" value={data.Generation_V} unit="V" />
-          <Metric label="Current (I)" value={data.Generation_I} unit="A" />
-          <Metric label="Power (P)" value={data.Generation_P} unit="W" />
-          <Metric label="Units (kWh)" value={data.Generation_kWh} unit="kWh" />
-          <Metric label="Power Factor (PF)" value={data.Generation_PF} />
-          <Metric label="Frequency (F)" value={data.Generation_F} unit="Hz" />
+      {hasGenerationData && (
+        <div className="card metrics-card">
+          <h2 className="section-title generation-title">Generation</h2>
+          <div className="metrics-grid">
+            <Metric label="Voltage (V)" value={data.Generation_V} unit="V" />
+            <Metric label="Current (I)" value={data.Generation_I} unit="A" />
+            <Metric label="Power (P)" value={data.Generation_P} unit="W" />
+            <Metric label="Units (kWh)" value={data.Generation_kWh} unit="kWh" />
+            <Metric label="Power Factor (PF)" value={data.Generation_PF} />
+            <Metric label="Frequency (F)" value={data.Generation_F} unit="Hz" />
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="timestamp">Last updated: {data.timestamp}</div>
+      <div className="timestamp">Last updated: {formattedTimestamp}</div>
     </div>
   );
 };
 
 interface MetricProps {
   label: string;
-  value: number;
+  value: number | string | null | undefined;
   unit?: string;
 }
 
-const Metric: React.FC<MetricProps> = ({ label, value, unit }) => (
-  <div className="metric-tile">
-    <div className="metric-label">{label}</div>
-    <div className="metric-value">
-      {value} {unit}
+const Metric: React.FC<MetricProps> = ({ label, value, unit }) => {
+  const displayValue =
+    value === null || value === undefined || value === '' ? '-' : value;
+  return (
+    <div className="metric-tile">
+      <div className="metric-label">{label}</div>
+      <div className="metric-value">
+        {displayValue} {unit}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default Dashboard;
