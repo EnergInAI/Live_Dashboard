@@ -6,7 +6,7 @@ interface AccessDeniedProps {
 }
 
 const AccessDenied: React.FC<AccessDeniedProps> = ({
-  message = 'Contact EnergInAI for the Next Steps and We"ll get you Saving.',
+  message = "Contact us for the Next Steps and We'll get you Saving."
 }) => {
   return (
     <div className="error-card">
