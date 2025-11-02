@@ -22,6 +22,7 @@ const Dashboard: React.FC = () => {
   const [accessDenied, setAccessDenied] = useState(false);
   const [username, setUsername] = useState<string>('Guest User');
 
+  // Save deviceId to local storage
   useEffect(() => {
     if (urlDeviceId) {
       localStorage.setItem('deviceId', urlDeviceId);
@@ -29,7 +30,7 @@ const Dashboard: React.FC = () => {
     }
   }, [urlDeviceId]);
 
-  // Token validation
+  // ✅ Token validation
   useEffect(() => {
     if (!deviceId || !urlToken) {
       setAccessDenied(true);
@@ -45,7 +46,7 @@ const Dashboard: React.FC = () => {
     setUsername(deviceEntry.name);
   }, [deviceId, urlToken]);
 
-  // Fetch data if access valid
+  // ✅ Fetch from Lambda/API Gateway
   useEffect(() => {
     if (!deviceId || accessDenied) return;
 
@@ -74,6 +75,7 @@ const Dashboard: React.FC = () => {
       });
   }, [deviceId, accessDenied]);
 
+  // 🔒 If invalid token / trial expired
   if (accessDenied)
     return (
       <AccessDenied message="Your trial has expired or you do not have permission to access this device." />
@@ -95,20 +97,27 @@ const Dashboard: React.FC = () => {
 
   if (!data) return <div className="no-data">No data available</div>;
 
-  // Determine type
-  const hasGenerationData =
-    data.Generation_V !== null &&
-    data.Generation_V !== undefined &&
-    data.Generation_V !== 0;
+  // ✅ Determine device type robustly
+  // If any "Generation_" field exists in the data keys, mark as solar
+  const hasGenerationData = Object.keys(data).some((key) =>
+    key.startsWith('Generation_')
+  );
 
-  const isGenerationOnly =
-    !data.Consumption_V && (deviceId?.startsWith('ENSA') || deviceId?.startsWith('ENTA'));
-  const isNonSolar = !hasGenerationData && !isGenerationOnly;
+  // Generation-only devices (no consumption fields)
+  const hasConsumptionData = Object.keys(data).some((key) =>
+    key.startsWith('Consumption_')
+  );
 
+  const isGenerationOnly = hasGenerationData && !hasConsumptionData;
+  const isNonSolar = !hasGenerationData && hasConsumptionData;
+
+  // Timestamp formatting
   const formattedTimestamp = new Date(data.timestamp as string).toLocaleString();
 
-  // Dynamic layout
-  const dashboardClass = isNonSolar ? 'dashboard-container single-section' : 'dashboard-container';
+  // Dynamic layout class
+  const dashboardClass = isNonSolar
+    ? 'dashboard-container single-section'
+    : 'dashboard-container';
 
   return (
     <div className={dashboardClass}>
@@ -122,13 +131,21 @@ const Dashboard: React.FC = () => {
             {isGenerationOnly ? (
               <>
                 <h1>Welcome to your dashboard</h1>
-                <h3>Monitor your Home right from your Phone.</h3>
+                <h3>Monitor your devices right from your phone.</h3>
               </>
             ) : (
               <>
-                <h1>Welcome, {username}</h1>
-                <h3>Device ID: {deviceId}</h3>
-                <h4 style={{ color: hasGenerationData ? '#28a745' : '#f28c28' }}>
+                <h1>
+                  {isNonSolar
+                    ? 'Welcome to your dashboard'
+                    : `Welcome, ${username}`}
+                </h1>
+                {!isNonSolar && <h3>Device ID: {deviceId}</h3>}
+                <h4
+                  style={{
+                    color: hasGenerationData ? '#28a745' : '#f28c28',
+                  }}
+                >
                   {hasGenerationData ? 'Solar Device' : 'Non-Solar Device'}
                 </h4>
               </>
@@ -137,8 +154,8 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Consumption Metrics */}
-      {!isGenerationOnly && (
+      {/* ✅ Consumption Metrics */}
+      {hasConsumptionData && (
         <div className="card metrics-card">
           <h2 className="section-title consumption-title">Consumption</h2>
           <div className="metrics-grid">
@@ -152,7 +169,7 @@ const Dashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Generation Metrics */}
+      {/* ✅ Generation Metrics */}
       {hasGenerationData && (
         <div className="card metrics-card">
           <h2 className="section-title generation-title">Generation</h2>
@@ -160,13 +177,18 @@ const Dashboard: React.FC = () => {
             <Metric label="Voltage (V)" value={data.Generation_V} unit="V" />
             <Metric label="Current (I)" value={data.Generation_I} unit="A" />
             <Metric label="Power (P)" value={data.Generation_P} unit="W" />
-            <Metric label="Units (kWh)" value={data.Generation_kWh} unit="kWh" />
+            <Metric
+              label="Units (kWh)"
+              value={data.Generation_kWh}
+              unit="kWh"
+            />
             <Metric label="Power Factor (PF)" value={data.Generation_PF} />
             <Metric label="Frequency (F)" value={data.Generation_F} unit="Hz" />
           </div>
         </div>
       )}
 
+      {/* Timestamp */}
       <div className="timestamp">Last updated: {formattedTimestamp}</div>
     </div>
   );

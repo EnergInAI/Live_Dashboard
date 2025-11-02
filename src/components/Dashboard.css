@@ -1,42 +1,203 @@
-/* Dynamic single-section expansion */
+/* 🌟 Root and layout */
+.dashboard-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  background-color: #f8f9fb;
+  min-height: 100vh;
+  color: #222;
+  box-sizing: border-box;
+}
+
+/* When only one section (non-solar) → stretch it nicely */
 .single-section .metrics-card {
   min-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .single-section .metrics-grid {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
+/* 🧭 Card container */
+.card {
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
+  padding: 1.5rem 2rem;
+  transition: all 0.25s ease;
+}
+
+.card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* 👋 Greeting section */
+.greeting-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.greeting-layout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.greeting-logo .org-logo {
+  width: 100px;
+  height: auto;
+  object-fit: contain;
+}
+
 .greeting-info h1 {
   font-size: 1.8rem;
-  margin-bottom: 0.2em;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  color: #111;
 }
 
 .greeting-info h3 {
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   font-weight: 400;
-  color: #777;
+  color: #555;
   margin-top: 0;
+  margin-bottom: 0.25rem;
 }
 
-.error-card {
+.greeting-info h4 {
+  font-size: 1rem;
+  margin-top: 0.5rem;
+  font-weight: 500;
+}
+
+/* 🔋 Metrics layout */
+.metrics-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.section-title {
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.consumption-title {
+  color: #007bff;
+}
+
+.generation-title {
+  color: #28a745;
+}
+
+/* ⚡ Metrics grid */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+/* 📊 Metric tile */
+.metric-tile {
+  background: #fdfdfd;
+  border-radius: 14px;
+  padding: 1rem;
   text-align: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s ease;
+}
+
+.metric-tile:hover {
+  transform: translateY(-3px);
+}
+
+.metric-label {
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 0.4rem;
+}
+
+.metric-value {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #111;
+}
+
+/* 🕒 Timestamp */
+.timestamp {
+  text-align: center;
+  font-size: 0.9rem;
+  color: #666;
+  margin-top: 0.5rem;
+}
+
+/* 🔄 Loading & Error States */
+.loading,
+.no-data,
+.error {
+  text-align: center;
+  margin-top: 3rem;
+  font-size: 1.1rem;
+  color: #555;
+}
+
+/* 🚫 Access Denied styling (matches dashboard cards) */
+.error-card {
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
   padding: 2rem;
-  background: var(--card-bg, #fff);
-  color: var(--text-color, #333);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  border-radius: 16px;
-  width: 80%;
+  text-align: center;
   max-width: 600px;
-  margin: 5rem auto;
+  margin: 8vh auto;
+  color: #333;
 }
 
 .error-card h2 {
-  color: #d33;
+  color: #d32f2f;
+  font-weight: 600;
   margin-bottom: 1rem;
 }
 
 .error-card p {
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   line-height: 1.5;
+  color: #444;
+}
+
+.error-card a {
+  color: #007bff;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.error-card a:hover {
+  text-decoration: underline;
+}
+
+/* 📱 Responsive tweaks */
+@media (max-width: 768px) {
+  .dashboard-container {
+    padding: 1rem;
+  }
+
+  .greeting-info h1 {
+    font-size: 1.5rem;
+  }
+
+  .metric-value {
+    font-size: 1.1rem;
+  }
+
+  .metric-label {
+    font-size: 0.85rem;
+  }
 }
