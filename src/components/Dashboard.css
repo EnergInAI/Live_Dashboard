@@ -275,3 +275,113 @@ body {
   padding: 40px;
   color: var(--primary-blue);
 }
+
+/* ================================
+   Refined Net Summary Card (Styled to Match Dashboard)
+   ================================ */
+.net-summary-card {
+  background: var(--background-light);
+  border-radius: 18px;
+  border: 2px solid var(--accent-orange);
+  padding: 26px 28px;
+  box-shadow: 0 4px 12px rgba(13, 39, 77, 0.08);
+  margin-bottom: 26px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  transition: all 0.25s ease;
+}
+
+.net-summary-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(13, 39, 77, 0.1);
+}
+
+.net-left {
+  flex: 1 1 48%;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.net-right {
+  flex: 1 1 48%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: right;
+  justify-content: center;
+}
+
+/* Title + Arrow */
+.net-title {
+  font-family: var(--heading-font);
+  font-weight: 600;
+  font-size: 1.4rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.net-title.import {
+  color: var(--accent-orange);
+}
+
+.net-title.export {
+  color: var(--accent-green);
+}
+
+.net-arrow {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+/* Subtext line below title */
+.net-subtext {
+  font-family: var(--body-font);
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* Right section for totals */
+.net-detail {
+  font-family: var(--body-font);
+  font-size: 1rem;
+  color: var(--text-dark);
+  line-height: 1.4;
+}
+
+.net-detail span {
+  font-weight: 600;
+  color: var(--primary-blue);
+}
+
+/* Subtle divider line between left/right (for large screens) */
+@media (min-width: 700px) {
+  .net-summary-card {
+    border-left: 5px solid var(--accent-orange);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .net-summary-card {
+    flex-direction: column;
+    text-align: center;
+    padding: 20px;
+  }
+
+  .net-right {
+    text-align: center;
+  }
+
+  .net-title {
+    justify-content: center;
+  }
+}
