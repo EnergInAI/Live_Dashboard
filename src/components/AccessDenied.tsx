@@ -6,11 +6,11 @@ interface AccessDeniedProps {
 }
 
 const AccessDenied: React.FC<AccessDeniedProps> = ({
-  message = 'Your trial has expired. Please contact EnergInAI for next steps.',
+  message = 'Contact EnergInAI for the Next Steps and We"ll get you Saving.',
 }) => {
   return (
     <div className="error-card">
-      <h2>Access Denied</h2>
+      <h2>Your Trial has Expired</h2>
       <p>
         {message}
         <br />
