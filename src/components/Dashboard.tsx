@@ -22,7 +22,9 @@ const Dashboard: React.FC = () => {
   const [accessDenied, setAccessDenied] = useState(false);
   const [username, setUsername] = useState<string>('Guest User');
 
-  // Save deviceId to local storage
+  /* -------------------------------------------------- */
+  /*  Save deviceId to local storage                    */
+  /* -------------------------------------------------- */
   useEffect(() => {
     if (urlDeviceId) {
       localStorage.setItem('deviceId', urlDeviceId);
@@ -30,7 +32,9 @@ const Dashboard: React.FC = () => {
     }
   }, [urlDeviceId]);
 
-  // ✅ Token validation
+  /* -------------------------------------------------- */
+  /*  Token validation                                  */
+  /* -------------------------------------------------- */
   useEffect(() => {
     if (!deviceId || !urlToken) {
       setAccessDenied(true);
@@ -46,7 +50,9 @@ const Dashboard: React.FC = () => {
     setUsername(deviceEntry.name);
   }, [deviceId, urlToken]);
 
-  // ✅ Fetch from Lambda/API Gateway
+  /* -------------------------------------------------- */
+  /*  Fetch data from Lambda / API Gateway              */
+  /* -------------------------------------------------- */
   useEffect(() => {
     if (!deviceId || accessDenied) return;
 
@@ -75,7 +81,9 @@ const Dashboard: React.FC = () => {
       });
   }, [deviceId, accessDenied]);
 
-  // 🔒 If invalid token / trial expired
+  /* -------------------------------------------------- */
+  /*  Conditional renders for states                    */
+  /* -------------------------------------------------- */
   if (accessDenied)
     return (
       <AccessDenied message="Your trial has expired or you do not have permission to access this device." />
@@ -97,28 +105,26 @@ const Dashboard: React.FC = () => {
 
   if (!data) return <div className="no-data">No data available</div>;
 
-  // ✅ Determine device type robustly
-  // If any "Generation_" field exists in the data keys, mark as solar
-  const hasGenerationData = Object.keys(data).some((key) =>
-    key.startsWith('Generation_')
-  );
+  /* -------------------------------------------------- */
+  /*  ✅ Robust prefix-based device-type detection       */
+  /* -------------------------------------------------- */
+  const devicePrefix = deviceId?.slice(0, 4)?.toUpperCase() || '';
 
-  // Generation-only devices (no consumption fields)
-  const hasConsumptionData = Object.keys(data).some((key) =>
-    key.startsWith('Consumption_')
-  );
+  const isSolarDevice = devicePrefix === 'ENSN' || devicePrefix === 'ENTN';
+  const isNonSolarDevice = devicePrefix === 'ENSS' || devicePrefix === 'ENTA';
+  const isGenerationOnly = isSolarDevice && !isNonSolarDevice; // fallback case
 
-  const isGenerationOnly = hasGenerationData && !hasConsumptionData;
-  const isNonSolar = !hasGenerationData && hasConsumptionData;
-
-  // Timestamp formatting
+  /* -------------------------------------------------- */
+  /*  Display helpers                                   */
+  /* -------------------------------------------------- */
   const formattedTimestamp = new Date(data.timestamp as string).toLocaleString();
-
-  // Dynamic layout class
-  const dashboardClass = isNonSolar
+  const dashboardClass = isNonSolarDevice
     ? 'dashboard-container single-section'
     : 'dashboard-container';
 
+  /* -------------------------------------------------- */
+  /*  Render                                            */
+  /* -------------------------------------------------- */
   return (
     <div className={dashboardClass}>
       {/* Greeting Section */}
@@ -128,49 +134,38 @@ const Dashboard: React.FC = () => {
             <img src="/logo.png" alt="EnergInAI" className="org-logo" />
           </div>
           <div className="greeting-info">
-            {isGenerationOnly ? (
+            {isSolarDevice ? (
               <>
-                <h1>Welcome to your dashboard</h1>
-                <h3>Monitor your devices right from your phone.</h3>
+                <h1>Welcome, {username}</h1>
+                <h3>Device ID: {deviceId}</h3>
+                <h4 style={{ color: '#28a745' }}>Solar Device</h4>
               </>
             ) : (
               <>
-                <h1>
-                  {isNonSolar
-                    ? 'Welcome to your dashboard'
-                    : `Welcome, ${username}`}
-                </h1>
-                {!isNonSolar && <h3>Device ID: {deviceId}</h3>}
-                <h4
-                  style={{
-                    color: hasGenerationData ? '#28a745' : '#f28c28',
-                  }}
-                >
-                  {hasGenerationData ? 'Solar Device' : 'Non-Solar Device'}
-                </h4>
+                <h1>Welcome to your dashboard</h1>
+                <h3>Monitor your devices right from your phone.</h3>
+                <h4 style={{ color: '#f28c28' }}>Non-Solar Device</h4>
               </>
             )}
           </div>
         </div>
       </div>
 
-      {/* ✅ Consumption Metrics */}
-      {hasConsumptionData && (
-        <div className="card metrics-card">
-          <h2 className="section-title consumption-title">Consumption</h2>
-          <div className="metrics-grid">
-            <Metric label="Voltage (V)" value={data.Consumption_V} unit="V" />
-            <Metric label="Current (I)" value={data.Consumption_I} unit="A" />
-            <Metric label="Power (P)" value={data.Consumption_P} unit="W" />
-            <Metric label="Units (kWh)" value={data.Consumption_kWh} unit="kWh" />
-            <Metric label="Power Factor (PF)" value={data.Consumption_PF} />
-            <Metric label="Frequency (F)" value={data.Consumption_F} unit="Hz" />
-          </div>
+      {/* ✅ Consumption Metrics (always shown) */}
+      <div className="card metrics-card">
+        <h2 className="section-title consumption-title">Consumption</h2>
+        <div className="metrics-grid">
+          <Metric label="Voltage (V)" value={data.Consumption_V} unit="V" />
+          <Metric label="Current (I)" value={data.Consumption_I} unit="A" />
+          <Metric label="Power (P)" value={data.Consumption_P} unit="W" />
+          <Metric label="Units (kWh)" value={data.Consumption_kWh} unit="kWh" />
+          <Metric label="Power Factor (PF)" value={data.Consumption_PF} />
+          <Metric label="Frequency (F)" value={data.Consumption_F} unit="Hz" />
         </div>
-      )}
+      </div>
 
-      {/* ✅ Generation Metrics */}
-      {hasGenerationData && (
+      {/* ✅ Generation Metrics (only for solar devices) */}
+      {isSolarDevice && (
         <div className="card metrics-card">
           <h2 className="section-title generation-title">Generation</h2>
           <div className="metrics-grid">
@@ -194,6 +189,9 @@ const Dashboard: React.FC = () => {
   );
 };
 
+/* -------------------------------------------------- */
+/*  Metric Sub-Component                              */
+/* -------------------------------------------------- */
 interface MetricProps {
   label: string;
   value: number | string | null | undefined;
