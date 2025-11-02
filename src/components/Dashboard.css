@@ -1,240 +1,277 @@
 /* ================================
-   DASHBOARD - RESTORED ORIGINAL
+   Base Styles (Original Reference)
    ================================ */
 
-/* --- Base Layout --- */
+:root {
+  --primary-blue: #004aad;
+  --accent-green: #00b894;
+  --accent-orange: #ff9f43;
+  --background-light: #ffffff;
+  --text-dark: #2d3436;
+  --text-gray: #636e72;
+  --card-border: #dfe6e9;
+  --heading-font: 'Poppins', sans-serif;
+  --body-font: 'Inter', sans-serif;
+}
+
+body {
+  font-family: var(--body-font);
+  background-color: var(--background-light);
+  color: var(--text-dark);
+  margin: 0;
+  padding: 0;
+}
+
+/* ================================
+   Dashboard Layout
+   ================================ */
+
 .dashboard-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  padding: 20px;
-  background-color: #f4f6f8; /* back to light background */
   min-height: 100vh;
-  font-family: "Poppins", sans-serif;
-  color: #1a1a1a;
+  padding: 20px 16px;
+  background-color: var(--background-light);
 }
 
-/* For non-solar devices (6-pin layout) */
-.dashboard-container.single-section {
-  justify-content: center;
-}
+/* Greeting Card */
 
-/* --- Generic Card --- */
 .card {
-  background-color: #ffffff;
-  border-radius: 16px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-  margin: 20px 0;
+  background-color: var(--background-light);
+  border: 2px solid var(--card-border);
+  border-radius: 18px;
+  box-shadow: 0 4px 12px rgba(13, 39, 77, 0.08);
   padding: 20px;
-  width: 90%;
-  max-width: 1100px;
-  transition: transform 0.2s ease-in-out;
+  margin-bottom: 20px;
+  width: 100%;
+  max-width: 950px;
 }
 
-.card:hover {
-  transform: translateY(-3px);
-}
-
-/* --- Greeting Card --- */
 .greeting-card {
-  text-align: center;
-  padding: 30px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .greeting-layout {
   display: flex;
-  flex-direction: column; /* restored stack layout */
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
+  width: 100%;
 }
 
 .greeting-logo {
-  margin-bottom: 15px;
+  flex: 1 1 30%;
+  display: flex;
+  justify-content: center;
 }
 
 .org-logo {
-  width: 150px;
+  max-width: 180px;
   height: auto;
 }
 
+.greeting-info {
+  flex: 1 1 70%;
+  text-align: left;
+}
+
 .greeting-info h1 {
+  font-family: var(--heading-font);
+  font-weight: 600;
   font-size: 1.8rem;
-  margin: 5px 0;
-  color: #1a1a1a;
+  margin: 0 0 5px 0;
+  color: var(--primary-blue);
 }
 
 .greeting-info h3 {
-  font-size: 1rem;
-  color: #555;
+  font-weight: 500;
+  font-size: 1.1rem;
+  color: var(--text-gray);
+  margin: 0;
 }
 
 /* ================================
-   NEW: NET SUMMARY CARD
+   New Net Summary Card
    ================================ */
-.net-summary-card {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background-color: #ffffff;
-  border-radius: 16px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-  margin: 15px 0;
-  padding: 20px 30px;
-  width: 90%;
-  max-width: 1100px;
-}
 
-.net-left,
-.net-right {
-  flex: 1;
+.net-summary-card {
+  background-color: var(--background-light);
+  border: 2px solid var(--card-border);
+  border-radius: 18px;
+  box-shadow: 0 4px 12px rgba(13, 39, 77, 0.08);
+  width: 100%;
+  max-width: 950px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
 }
 
 .net-left {
+  flex: 1 1 45%;
   text-align: left;
 }
 
 .net-right {
+  flex: 1 1 50%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   text-align: right;
 }
 
-.net-heading {
-  font-size: 1.4rem;
+.net-title {
+  font-family: var(--heading-font);
   font-weight: 600;
+  font-size: 1.4rem;
   display: flex;
   align-items: center;
-  gap: 5px;
-}
-
-.net-import .net-heading {
-  color: #ff9800; /* orange for import */
-}
-
-.net-export .net-heading {
-  color: #4caf50; /* green for export */
+  gap: 6px;
+  margin-bottom: 4px;
 }
 
 .net-arrow {
-  font-size: 1.1rem;
-}
-
-.net-value {
-  font-size: 2rem;
   font-weight: bold;
-  color: #1a1a1a;
-  margin-top: 5px;
+  font-size: 1.2rem;
 }
 
-.net-metric {
+.net-title.import {
+  color: var(--accent-orange);
+}
+
+.net-title.export {
+  color: var(--accent-green);
+}
+
+.net-subtext {
+  font-family: var(--body-font);
+  font-size: 0.95rem;
+  color: var(--text-gray);
+}
+
+.net-detail {
+  font-family: var(--body-font);
   font-size: 1rem;
-  margin: 3px 0;
-  color: #1a1a1a;
+  color: var(--text-dark);
 }
 
-.net-metric span {
-  font-weight: 500;
-  color: #333; /* numbers neutral, not colored */
+.net-detail span {
+  font-weight: 600;
+  color: var(--primary-blue);
 }
 
-/* --- Metrics Section --- */
+/* ================================
+   Metrics Cards
+   ================================ */
+
 .metrics-card {
-  width: 90%;
-  max-width: 1100px;
+  background-color: var(--background-light);
+  border: 2px solid var(--card-border);
+  border-radius: 18px;
+  box-shadow: 0 4px 12px rgba(13, 39, 77, 0.08);
+  width: 100%;
+  max-width: 950px;
+  padding: 20px;
+  margin-bottom: 20px;
 }
 
 .section-title {
+  font-family: var(--heading-font);
   font-size: 1.4rem;
-  margin-bottom: 12px;
   font-weight: 600;
+  margin-bottom: 15px;
 }
 
 .consumption-title {
-  color: #ff9800;
+  color: var(--accent-orange);
 }
 
 .generation-title {
-  color: #4caf50;
+  color: var(--accent-green);
 }
 
-/* --- Grid Layout --- */
+/* Metric Grid */
+
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
 }
 
 .metric-tile {
-  background-color: #fafafa;
-  border-radius: 12px;
-  padding: 16px;
+  background-color: #f9fafc;
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  padding: 14px;
   text-align: center;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
 .metric-label {
   font-size: 0.9rem;
-  color: #666;
-  margin-bottom: 5px;
+  font-weight: 500;
+  color: var(--text-gray);
+  margin-bottom: 4px;
 }
 
 .metric-value {
-  font-size: 1.3rem;
-  font-weight: 600;
-  color: #1a1a1a;
-}
-
-/* --- Timestamp --- */
-.timestamp {
-  margin-top: 10px;
-  color: #666;
-  font-size: 0.9rem;
-  text-align: center;
-}
-
-/* --- Access Denied --- */
-.error-card {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  background-color: #ffffff;
-  color: #1a1a1a;
-  border-radius: 16px;
-  padding: 40px;
-  width: 90%;
-  max-width: 500px;
-  margin: 100px auto;
-  text-align: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.error-card h2 {
-  font-size: 1.6rem;
-  color: #ff4d4d;
-  margin-bottom: 12px;
-}
-
-.error-card p {
-  font-size: 1rem;
-  color: #333;
-}
-
-.error-card a {
-  color: #4caf50;
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.error-card a:hover {
-  text-decoration: underline;
-}
-
-/* --- Loading / Error Text --- */
-.loading,
-.no-data,
-.error {
-  color: #666;
   font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+/* ================================
+   Timestamp and Status
+   ================================ */
+
+.timestamp {
+  margin-top: 15px;
+  font-size: 0.9rem;
+  color: var(--text-gray);
+  font-style: italic;
   text-align: center;
-  margin-top: 100px;
+}
+
+/* Loading / Error States */
+
+.loading,
+.error,
+.no-data {
+  text-align: center;
+  color: var(--text-gray);
+  font-size: 1rem;
+  padding: 40px 0;
+}
+
+/* ================================
+   Responsive Adjustments
+   ================================ */
+
+@media (max-width: 768px) {
+  .greeting-layout {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .greeting-info {
+    text-align: center;
+  }
+
+  .metrics-grid {
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  }
+
+  .net-summary-card {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .net-right {
+    text-align: center;
+  }
 }
