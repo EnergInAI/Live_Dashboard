@@ -199,7 +199,7 @@ const Dashboard: React.FC = () => {
       )}
 
       <div className="timestamp">
-        Last updated: {formattedTimestamp} (auto-refresh every 10 s)
+        Last updated: {formattedTimestamp} 
       </div>
     </div>
   );
