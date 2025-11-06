@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import userMap from '../userMap';
 import AccessDenied from './AccessDenied';
 import NetSummaryCard from './NetSummaryCard';
@@ -31,6 +31,9 @@ const Dashboard: React.FC = () => {
     totalConsumed: 0,
     totalGenerated: 0,
   });
+
+  // Track last data timestamp to avoid double-counting
+  const lastTimestampRef = useRef<string | null>(null);
 
   // Store deviceId in localStorage if available
   useEffect(() => {
@@ -81,8 +84,9 @@ const Dashboard: React.FC = () => {
           const latestData = responseData[0];
           setLoading(false);
 
-          // Only update if new data timestamp is newer than the last one
-          if (!data || latestData.timestamp !== data.timestamp) {
+          // ✅ Only update if new data timestamp is newer than the last one
+          if (latestData.timestamp !== lastTimestampRef.current) {
+            lastTimestampRef.current = latestData.timestamp;
             setData(latestData);
 
             const prefix = deviceId.slice(0, 4).toUpperCase();
@@ -91,7 +95,6 @@ const Dashboard: React.FC = () => {
               setTotals(getTotals(deviceId));
             }
           }
-
         })
         .catch((err) => {
           console.error(err);
@@ -103,24 +106,28 @@ const Dashboard: React.FC = () => {
     // Initial fetch
     fetchData();
 
-    // ⏱️ Refresh every 5 seconds
+    // ⏱️ Refresh every 10 seconds
     const interval = setInterval(fetchData, 10000);
 
     // Cleanup on unmount or when device changes
     return () => clearInterval(interval);
-  }, [deviceId, accessDenied]);
-
+  }, [deviceId, accessDenied]); // ✅ no dependency warning
 
   // UI States
   if (accessDenied) return <AccessDenied />;
   if (error) return <div className="error"><h3>{error}</h3></div>;
-  if (loading) return <div className="loading">Loading data for device: <strong>{deviceId}</strong>...</div>;
+  if (loading) return (
+    <div className="loading">
+      Loading data for device: <strong>{deviceId}</strong>...
+    </div>
+  );
   if (!data) return <div className="no-data">No data available</div>;
 
-  // Device type
+  // Device type detection
   const prefix = deviceId?.slice(0, 4)?.toUpperCase() || '';
   const isSolarDevice = prefix === 'ENSN' || prefix === 'ENTN';
-  const isNonSolarDevice = prefix === 'ENSS' || prefix === 'ENTA';
+  const isNonSolarDevice =
+    prefix === 'ENSS' || prefix === 'ENTA' || prefix === 'ENSA';
   const formattedTimestamp = new Date(data.timestamp as string).toLocaleString();
 
   return (
@@ -147,7 +154,7 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* ✅ New Net Summary Card — visible only for Solar Devices */}
+      {/* ✅ Net Summary Card — visible only for Solar Devices */}
       {isSolarDevice && (
         <NetSummaryCard
           netEnergy={totals.net}
@@ -157,20 +164,22 @@ const Dashboard: React.FC = () => {
       )}
 
       {/* For non-solar devices, keep spacing/layout balanced */}
-      {isNonSolarDevice && (
-        <div style={{ marginBottom: '16px' }} />
-      )}
+      {isNonSolarDevice && <div style={{ marginBottom: '16px' }} />}
 
       {/* Consumption Section */}
       <div className="card metrics-card">
         <h2 className="section-title consumption-title">Consumption</h2>
         <div className="metrics-grid">
-          <Metric label="Voltage (V)" value={data.Consumption_V} unit="V" />
-          <Metric label="Current (I)" value={data.Consumption_I} unit="A" />
-          <Metric label="Power (P)" value={data.Consumption_P} unit="W" />
-          <Metric label="Units (kWh)" value={data.Consumption_kWh} unit="kWh" />
-          <Metric label="Power Factor (PF)" value={data.Consumption_PF} />
-          <Metric label="Frequency (F)" value={data.Consumption_F} unit="Hz" />
+          <Metric label="Voltage (V)" value={data.Consumption_V ?? data.V} unit="V" />
+          <Metric label="Current (I)" value={data.Consumption_I ?? data.I} unit="A" />
+          <Metric label="Power (P)" value={data.Consumption_P ?? data.P} unit="W" />
+          <Metric
+            label="Units (kWh)"
+            value={data.Consumption_kWh ?? data.kWh}
+            unit="kWh"
+          />
+          <Metric label="Power Factor (PF)" value={data.Consumption_PF ?? data.PF} />
+          <Metric label="Frequency (F)" value={data.Consumption_F ?? data.F} unit="Hz" />
         </div>
       </div>
 
@@ -189,7 +198,9 @@ const Dashboard: React.FC = () => {
         </div>
       )}
 
-      <div className="timestamp">Last updated: {formattedTimestamp}</div>
+      <div className="timestamp">
+        Last updated: {formattedTimestamp} (auto-refresh every 10 s)
+      </div>
     </div>
   );
 };
@@ -202,7 +213,8 @@ interface MetricProps {
 }
 
 const Metric: React.FC<MetricProps> = ({ label, value, unit }) => {
-  const displayValue = value === null || value === undefined || value === '' ? '-' : value;
+  const displayValue =
+    value === null || value === undefined || value === '' ? '-' : value;
   return (
     <div className="metric-tile">
       <div className="metric-label">{label}</div>
