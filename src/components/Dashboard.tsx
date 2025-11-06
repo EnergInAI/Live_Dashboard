@@ -79,14 +79,19 @@ const Dashboard: React.FC = () => {
           }
 
           const latestData = responseData[0];
-          setData(latestData);
           setLoading(false);
 
-          const prefix = deviceId.slice(0, 4).toUpperCase();
-          if (prefix === 'ENSN' || prefix === 'ENTN') {
-            updateTotals(deviceId, latestData);
-            setTotals(getTotals(deviceId));
+          // Only update if new data timestamp is newer than the last one
+          if (!data || latestData.timestamp !== data.timestamp) {
+            setData(latestData);
+
+            const prefix = deviceId.slice(0, 4).toUpperCase();
+            if (prefix === 'ENSN' || prefix === 'ENTN') {
+              updateTotals(deviceId, latestData);
+              setTotals(getTotals(deviceId));
+            }
           }
+
         })
         .catch((err) => {
           console.error(err);
