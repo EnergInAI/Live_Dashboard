@@ -56,42 +56,55 @@ const Dashboard: React.FC = () => {
     setUsername(deviceEntry.name);
   }, [deviceId, urlToken]);
 
-  // Fetch latest device data
+  // Fetch latest device data (auto-refresh)
   useEffect(() => {
     if (!deviceId || accessDenied) return;
 
-    fetch(
-      `https://lqqhlwp62i.execute-api.ap-south-1.amazonaws.com/prod_v1/devicedata?deviceId=${deviceId}&limit=1`
-    )
-      .then(async (res) => {
-        if (!res.ok) {
-          const errText = await res.text();
-          throw new Error(`API error: ${res.status} ${errText}`);
-        }
-        return res.json();
-      })
-      .then((responseData) => {
-        if (!Array.isArray(responseData) || responseData.length === 0) {
-          setError('No data received from API');
+    const fetchData = () => {
+      fetch(
+        `https://lqqhlwp62i.execute-api.ap-south-1.amazonaws.com/prod_v1/devicedata?deviceId=${deviceId}&limit=1`
+      )
+        .then(async (res) => {
+          if (!res.ok) {
+            const errText = await res.text();
+            throw new Error(`API error: ${res.status} ${errText}`);
+          }
+          return res.json();
+        })
+        .then((responseData) => {
+          if (!Array.isArray(responseData) || responseData.length === 0) {
+            setError('No data received from API');
+            setLoading(false);
+            return;
+          }
+
+          const latestData = responseData[0];
+          setData(latestData);
           setLoading(false);
-          return;
-        }
 
-        const latestData = responseData[0];
-        setData(latestData);
-        setLoading(false);
+          const prefix = deviceId.slice(0, 4).toUpperCase();
+          if (prefix === 'ENSN' || prefix === 'ENTN') {
+            updateTotals(deviceId, latestData);
+            setTotals(getTotals(deviceId));
+          }
+        })
+        .catch((err) => {
+          console.error(err);
+          setError(err.message);
+          setLoading(false);
+        });
+    };
 
-        const prefix = deviceId.slice(0, 4).toUpperCase();
-        if (prefix === 'ENSN' || prefix === 'ENTN') {
-          updateTotals(deviceId, latestData);
-          setTotals(getTotals(deviceId));
-        }
-      })
-      .catch((err) => {
-        setError(err.message);
-        setLoading(false);
-      });
+    // Initial fetch
+    fetchData();
+
+    // ⏱️ Refresh every 5 seconds
+    const interval = setInterval(fetchData, 10000);
+
+    // Cleanup on unmount or when device changes
+    return () => clearInterval(interval);
   }, [deviceId, accessDenied]);
+
 
   // UI States
   if (accessDenied) return <AccessDenied />;
