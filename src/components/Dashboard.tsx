@@ -24,7 +24,6 @@ const Dashboard: React.FC = () => {
   const [accessDenied, setAccessDenied] = useState(false);
   const [username, setUsername] = useState<string>('Guest User');
 
-  // For net totals (used in NetSummaryCard)
   const [totals, setTotals] = useState({
     net: 0,
     netType: '',
@@ -32,10 +31,9 @@ const Dashboard: React.FC = () => {
     totalGenerated: 0,
   });
 
-  // Track last data timestamp to avoid double-counting
   const lastTimestampRef = useRef<string | null>(null);
 
-  // Store deviceId in localStorage if available
+  // Store deviceId locally for reloads
   useEffect(() => {
     if (urlDeviceId) {
       localStorage.setItem('deviceId', urlDeviceId);
@@ -43,7 +41,7 @@ const Dashboard: React.FC = () => {
     }
   }, [urlDeviceId]);
 
-  // Validate access based on userMap
+  // Validate access via userMap
   useEffect(() => {
     if (!deviceId || !urlToken) {
       setAccessDenied(true);
@@ -59,14 +57,14 @@ const Dashboard: React.FC = () => {
     setUsername(deviceEntry.name);
   }, [deviceId, urlToken]);
 
-  // Fetch latest device data (auto-refresh)
+  // Fetch data periodically
   useEffect(() => {
     if (!deviceId || accessDenied) return;
 
     const fetchData = () => {
       fetch(
         `https://lqqhlwp62i.execute-api.ap-south-1.amazonaws.com/prod_v1/devicedata?deviceId=${deviceId}&limit=1`,
-        { cache: 'no-store' } // ✅ Prevent cached responses
+        { cache: 'no-store' }
       )
         .then(async (res) => {
           if (!res.ok) {
@@ -82,70 +80,44 @@ const Dashboard: React.FC = () => {
             return;
           }
 
+          // ✅ The API already returns flat fields
           const latestData = responseData[0];
-          setLoading(false);
 
-          // ✅ Flatten CN (Consumption) and GN (Generation) data
-          const formattedData = {
-            ...latestData,
-            Consumption_V: latestData.CN?.V,
-            Consumption_I: latestData.CN?.I,
-            Consumption_P: latestData.CN?.P,
-            Consumption_kWh: latestData.CN?.kWh,
-            Consumption_PF: latestData.CN?.PF,
-            Consumption_F: latestData.CN?.F,
-            Generation_V: latestData.GN?.V,
-            Generation_I: latestData.GN?.I,
-            Generation_P: latestData.GN?.P,
-            Generation_kWh: latestData.GN?.kWh,
-            Generation_PF: latestData.GN?.PF,
-            Generation_F: latestData.GN?.F,
-          };
-
-          // ✅ Only update if new data timestamp is newer
+          // Only update if it's a new reading
           if (latestData.timestamp !== lastTimestampRef.current) {
             lastTimestampRef.current = latestData.timestamp;
-            setData(formattedData);
+            setData(latestData);
 
             const prefix = deviceId.slice(0, 4).toUpperCase();
             if (prefix === 'ENSN' || prefix === 'ENTN') {
-              updateTotals(deviceId, formattedData);
+              updateTotals(deviceId, latestData);
               setTotals(getTotals(deviceId));
             }
           }
+
+          setLoading(false);
         })
         .catch((err) => {
-          console.error(err);
+          console.error('Fetch error:', err);
           setError(err.message);
           setLoading(false);
         });
     };
 
-    // Initial fetch
     fetchData();
-
-    // ⏱️ Refresh every 10 seconds
     const interval = setInterval(fetchData, 10000);
-
-    // Cleanup
     return () => clearInterval(interval);
   }, [deviceId, accessDenied]);
 
-  // UI States
+  // UI states
   if (accessDenied) return <AccessDenied />;
   if (error) return <div className="error"><h3>{error}</h3></div>;
-  if (loading) return (
-    <div className="loading">
-      Loading data for device: <strong>{deviceId}</strong>...
-    </div>
-  );
+  if (loading) return <div className="loading">Loading data for device: <strong>{deviceId}</strong>...</div>;
   if (!data) return <div className="no-data">No data available</div>;
 
-  // Device type detection
   const prefix = deviceId?.slice(0, 4)?.toUpperCase() || '';
   const isSolarDevice = prefix === 'ENSN' || prefix === 'ENTN';
-  const isNonSolarDevice =
-    prefix === 'ENSS' || prefix === 'ENTA' || prefix === 'ENSA';
+  const isNonSolarDevice = prefix === 'ENSS' || prefix === 'ENTA' || prefix === 'ENSA';
   const formattedTimestamp = new Date(data.timestamp as string).toLocaleString();
 
   return (
@@ -172,7 +144,7 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* ✅ Net Summary Card — visible only for Solar Devices */}
+      {/* Net Summary Card */}
       {isSolarDevice && (
         <NetSummaryCard
           netEnergy={totals.net}
@@ -181,23 +153,22 @@ const Dashboard: React.FC = () => {
         />
       )}
 
-      {/* For non-solar devices, keep spacing/layout balanced */}
       {isNonSolarDevice && <div style={{ marginBottom: '16px' }} />}
 
       {/* Consumption Section */}
       <div className="card metrics-card">
         <h2 className="section-title consumption-title">Consumption</h2>
         <div className="metrics-grid">
-          <Metric label="Voltage (V)" value={data.Consumption_V ?? data.V} unit="V" />
-          <Metric label="Current (I)" value={data.Consumption_I ?? data.I} unit="A" />
-          <Metric label="Power (P)" value={data.Consumption_P ?? data.P} unit="W" />
-          <Metric label="Units (kWh)" value={data.Consumption_kWh ?? data.kWh} unit="kWh" />
-          <Metric label="Power Factor (PF)" value={data.Consumption_PF ?? data.PF} />
-          <Metric label="Frequency (F)" value={data.Consumption_F ?? data.F} unit="Hz" />
+          <Metric label="Voltage (V)" value={data.Consumption_V} unit="V" />
+          <Metric label="Current (I)" value={data.Consumption_I} unit="A" />
+          <Metric label="Power (P)" value={data.Consumption_P} unit="W" />
+          <Metric label="Units (kWh)" value={data.Consumption_kWh} unit="kWh" />
+          <Metric label="Power Factor (PF)" value={data.Consumption_PF} />
+          <Metric label="Frequency (F)" value={data.Consumption_F} unit="Hz" />
         </div>
       </div>
 
-      {/* Generation Section (Solar only) */}
+      {/* Generation Section */}
       {isSolarDevice && (
         <div className="card metrics-card">
           <h2 className="section-title generation-title">Generation</h2>
@@ -212,9 +183,7 @@ const Dashboard: React.FC = () => {
         </div>
       )}
 
-      <div className="timestamp">
-        Last updated: {formattedTimestamp}
-      </div>
+      <div className="timestamp">Last updated: {formattedTimestamp}</div>
     </div>
   );
 };
