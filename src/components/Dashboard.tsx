@@ -37,6 +37,7 @@ const Dashboard: React.FC = () => {
 
   const lastTimestampRef = useRef<string | null>(null);
   const lastNetUpdateRef = useRef<number>(0);
+  const initialLoadDone = useRef(false);
 
   useEffect(() => {
     if (urlDeviceId) {
@@ -98,9 +99,17 @@ const Dashboard: React.FC = () => {
           if (prefix === 'ENSN' || prefix === 'ENTN') {
             updateTotals(deviceId, latestData);
 
-            // Throttle the UI updates for net summary to once every 10 minutes
             const now = Date.now();
-            if (now - lastNetUpdateRef.current > 600000) {
+
+            // Immediately update totals on first fetch
+            if (!initialLoadDone.current) {
+              setTotals(getTotals(deviceId));
+              initialLoadDone.current = true;
+              lastNetUpdateRef.current = now;
+            }
+
+            // Throttle further updates
+            else if (now - lastNetUpdateRef.current > 600000) {
               setTotals(getTotals(deviceId));
               lastNetUpdateRef.current = now;
             }
