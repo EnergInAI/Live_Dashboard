@@ -12,11 +12,15 @@ interface EnergyPayload {
 
 const Dashboard: React.FC = () => {
   const queryParams = new URLSearchParams(window.location.search);
+  // Attempt to get deviceId and token from URL first, else load from localStorage
   const urlDeviceId = queryParams.get('deviceId');
   const urlToken = queryParams.get('token');
 
   const [deviceId, setDeviceId] = useState<string | null>(
     urlDeviceId || localStorage.getItem('deviceId')
+  );
+  const [token, setToken] = useState<string | null>(
+    urlToken || localStorage.getItem('token')
   );
   const [data, setData] = useState<EnergyPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -33,31 +37,36 @@ const Dashboard: React.FC = () => {
 
   const lastTimestampRef = useRef<string | null>(null);
 
-  // Persist deviceId
+  // Persist deviceId and token if new values appear in URL
   useEffect(() => {
     if (urlDeviceId) {
       localStorage.setItem('deviceId', urlDeviceId);
       setDeviceId(urlDeviceId);
     }
-  }, [urlDeviceId]);
+    if (urlToken) {
+      localStorage.setItem('token', urlToken);
+      setToken(urlToken);
+    }
+  }, [urlDeviceId, urlToken]);
 
-  // Access validation
+  // Access validation using deviceId and token state variables
   useEffect(() => {
-    if (!deviceId || !urlToken) {
+    if (!deviceId || !token) {
       setAccessDenied(true);
       return;
     }
 
     const deviceEntry = userMap[deviceId];
-    if (!deviceEntry || deviceEntry.token !== urlToken) {
+    if (!deviceEntry || deviceEntry.token !== token) {
       setAccessDenied(true);
       return;
     }
 
     setUsername(deviceEntry.name);
-  }, [deviceId, urlToken]);
+    setAccessDenied(false);
+  }, [deviceId, token]);
 
-  // Fetch every 10s
+  // Fetch data every 10s as before if access allowed
   useEffect(() => {
     if (!deviceId || accessDenied) return;
 
@@ -84,7 +93,7 @@ const Dashboard: React.FC = () => {
         const newTimestamp = latestData.timestamp;
         const prevTimestamp = lastTimestampRef.current;
 
-        // Compare timestamps as actual Date objects
+        // Compare timestamps as Date objects
         if (
           !prevTimestamp ||
           new Date(newTimestamp).getTime() > new Date(prevTimestamp).getTime()
@@ -125,8 +134,7 @@ const Dashboard: React.FC = () => {
 
   const prefix = deviceId?.slice(0, 4)?.toUpperCase() || '';
   const isSolarDevice = prefix === 'ENSN' || prefix === 'ENTN';
-  const isNonSolarDevice =
-    prefix === 'ENSS' || prefix === 'ENTA' || prefix === 'ENSA';
+  const isNonSolarDevice = prefix === 'ENSS' || prefix === 'ENTA' || prefix === 'ENSA';
   const formattedTimestamp = new Date(data.timestamp as string).toLocaleString();
 
   return (
@@ -201,8 +209,7 @@ interface MetricProps {
 }
 
 const Metric: React.FC<MetricProps> = ({ label, value, unit }) => {
-  const displayValue =
-    value === null || value === undefined || value === '' ? '-' : value;
+  const displayValue = value === null || value === undefined || value === '' ? '-' : value;
   return (
     <div className="metric-tile">
       <div className="metric-label">{label}</div>
