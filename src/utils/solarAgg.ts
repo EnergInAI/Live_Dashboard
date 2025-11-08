@@ -46,7 +46,7 @@ export function updateTotals(deviceId: string, data: any) {
     totals.net = 0;
     totals.netType = '';
     totals.lastUpdateDate = currentDate;
-    return; // Don't accumulate on reset, wait for next reading
+    return;
   }
 
   // Only add positive differences (incremental energy)
