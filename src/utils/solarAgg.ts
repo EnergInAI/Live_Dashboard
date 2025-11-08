@@ -8,18 +8,15 @@ interface Aggregates {
   lastUpdateDate: string;   // yyyy-mm-dd in IST for daily reset
 }
 
-// Store per-device aggregates in-memory
 const deviceTotals: Record<string, Aggregates> = {};
 
-// Helper: current date in IST (yyyy-mm-dd)
 function getCurrentDateIST(): string {
   const date = new Date();
   const utc = date.getTime() + date.getTimezoneOffset() * 60000;
-  const istTime = new Date(utc + 330 * 60000); // +5:30
+  const istTime = new Date(utc + 330 * 60000); // IST +5:30
   return istTime.toISOString().slice(0, 10);
 }
 
-// Helper: read kWh from flattened or nested shapes
 function readKWh(data: any) {
   const c =
     parseFloat(
@@ -44,7 +41,6 @@ export function updateTotals(deviceId: string, data: any) {
   const { c, g } = readKWh(data);
   const currentDate = getCurrentDateIST();
 
-  // Initialize or roll new day baseline
   if (!deviceTotals[deviceId] || deviceTotals[deviceId].lastUpdateDate !== currentDate) {
     deviceTotals[deviceId] = {
       baseConsumed: c,
@@ -59,28 +55,24 @@ export function updateTotals(deviceId: string, data: any) {
 
   const agg = deviceTotals[deviceId];
 
-  // Compute totals as deltas from baseline; clamp at 0
   agg.totalConsumed = Math.max(0, c - agg.baseConsumed);
   agg.totalGenerated = Math.max(0, g - agg.baseGenerated);
 
-  // Compute net and status
   agg.net = agg.totalGenerated - agg.totalConsumed;
   agg.netType = agg.net > 0 ? 'export' : agg.net < 0 ? 'import' : 'neutral';
 }
 
 export function getTotals(deviceId: string) {
   const a = deviceTotals[deviceId];
-  return a
-    ? {
-        totalConsumed: a.totalConsumed,
-        totalGenerated: a.totalGenerated,
-        net: a.net,
-        netType: a.netType,
-      }
-    : {
-        totalConsumed: 0,
-        totalGenerated: 0,
-        net: 0,
-        netType: '',
-      };
+  return a ? {
+    totalConsumed: a.totalConsumed,
+    totalGenerated: a.totalGenerated,
+    net: a.net,
+    netType: a.netType,
+  } : {
+    totalConsumed: 0,
+    totalGenerated: 0,
+    net: 0,
+    netType: '',
+  };
 }

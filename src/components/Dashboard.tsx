@@ -27,7 +27,6 @@ const Dashboard: React.FC = () => {
   const [accessDenied, setAccessDenied] = useState(false);
   const [username, setUsername] = useState<string>('Guest User');
 
-  // Net totals shown in the card (UI throttled every 10 minutes)
   const [totals, setTotals] = useState({
     net: 0,
     netType: '',
@@ -39,7 +38,6 @@ const Dashboard: React.FC = () => {
   const lastNetUpdateRef = useRef<number>(0);
   const initialLoadDone = useRef(false);
 
-  // Persist URL values
   useEffect(() => {
     if (urlDeviceId) {
       localStorage.setItem('deviceId', urlDeviceId);
@@ -51,7 +49,6 @@ const Dashboard: React.FC = () => {
     }
   }, [urlDeviceId, urlToken]);
 
-  // Access validation
   useEffect(() => {
     if (!deviceId || !token) {
       setAccessDenied(true);
@@ -66,7 +63,6 @@ const Dashboard: React.FC = () => {
     setAccessDenied(false);
   }, [deviceId, token]);
 
-  // Fetch live data every 10 seconds; update net on first load then every 10 minutes
   useEffect(() => {
     if (!deviceId || accessDenied) return;
 
@@ -98,7 +94,6 @@ const Dashboard: React.FC = () => {
 
           const prefix = deviceId.slice(0, 4).toUpperCase();
           if (prefix === 'ENSN' || prefix === 'ENTN') {
-            // Normalize for aggregator; leaves all live tiles untouched
             const normalized = {
               Consumption_kWh:
                 (latestData as any)?.Consumption_kWh ??
@@ -134,7 +129,6 @@ const Dashboard: React.FC = () => {
     return () => clearInterval(interval);
   }, [deviceId, accessDenied]);
 
-  // UI states
   if (accessDenied) return <AccessDenied />;
   if (error) return <div className="error"><h3>{error}</h3></div>;
   if (loading)
