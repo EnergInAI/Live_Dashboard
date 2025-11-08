@@ -12,7 +12,6 @@ interface EnergyPayload {
 
 const Dashboard: React.FC = () => {
   const queryParams = new URLSearchParams(window.location.search);
-  // Attempt to get deviceId and token from URL first, else load from localStorage
   const urlDeviceId = queryParams.get('deviceId');
   const urlToken = queryParams.get('token');
 
@@ -28,6 +27,7 @@ const Dashboard: React.FC = () => {
   const [accessDenied, setAccessDenied] = useState(false);
   const [username, setUsername] = useState<string>('Guest User');
 
+  // Net totals updated every 10 minutes
   const [totals, setTotals] = useState({
     net: 0,
     netType: '',
@@ -36,8 +36,8 @@ const Dashboard: React.FC = () => {
   });
 
   const lastTimestampRef = useRef<string | null>(null);
+  const lastNetUpdateRef = useRef<number>(0);
 
-  // Persist deviceId and token if new values appear in URL
   useEffect(() => {
     if (urlDeviceId) {
       localStorage.setItem('deviceId', urlDeviceId);
@@ -49,24 +49,20 @@ const Dashboard: React.FC = () => {
     }
   }, [urlDeviceId, urlToken]);
 
-  // Access validation using deviceId and token state variables
   useEffect(() => {
     if (!deviceId || !token) {
       setAccessDenied(true);
       return;
     }
-
     const deviceEntry = userMap[deviceId];
     if (!deviceEntry || deviceEntry.token !== token) {
       setAccessDenied(true);
       return;
     }
-
     setUsername(deviceEntry.name);
     setAccessDenied(false);
   }, [deviceId, token]);
 
-  // Fetch data every 10s as before if access allowed
   useEffect(() => {
     if (!deviceId || accessDenied) return;
 
@@ -74,12 +70,10 @@ const Dashboard: React.FC = () => {
       try {
         const url = `https://lqqhlwp62i.execute-api.ap-south-1.amazonaws.com/prod_v1/devicedata?deviceId=${deviceId}&limit=1&_ts=${Date.now()}`;
         const res = await fetch(url, { cache: 'no-store' });
-
         if (!res.ok) {
           const errText = await res.text();
           throw new Error(`API error: ${res.status} ${errText}`);
         }
-
         const responseData = await res.json();
         console.log('✅ API response:', responseData);
 
@@ -93,7 +87,6 @@ const Dashboard: React.FC = () => {
         const newTimestamp = latestData.timestamp;
         const prevTimestamp = lastTimestampRef.current;
 
-        // Compare timestamps as Date objects
         if (
           !prevTimestamp ||
           new Date(newTimestamp).getTime() > new Date(prevTimestamp).getTime()
@@ -104,10 +97,15 @@ const Dashboard: React.FC = () => {
           const prefix = deviceId.slice(0, 4).toUpperCase();
           if (prefix === 'ENSN' || prefix === 'ENTN') {
             updateTotals(deviceId, latestData);
-            setTotals(getTotals(deviceId));
+
+            // Throttle the UI updates for net summary to once every 10 minutes
+            const now = Date.now();
+            if (now - lastNetUpdateRef.current > 600000) {
+              setTotals(getTotals(deviceId));
+              lastNetUpdateRef.current = now;
+            }
           }
         }
-
         setLoading(false);
       } catch (err: any) {
         console.error('❌ Fetch error:', err);
@@ -121,7 +119,6 @@ const Dashboard: React.FC = () => {
     return () => clearInterval(interval);
   }, [deviceId, accessDenied]);
 
-  // UI states
   if (accessDenied) return <AccessDenied />;
   if (error) return <div className="error"><h3>{error}</h3></div>;
   if (loading)
