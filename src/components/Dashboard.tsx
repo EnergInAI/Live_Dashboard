@@ -132,6 +132,13 @@ const Dashboard: React.FC = () => {
   const isNonSolarDevice = prefix === 'ENSS' || prefix === 'ENTA' || prefix === 'ENSA';
   const formattedTimestamp = new Date(data.timestamp as string).toLocaleString();
 
+  // Instant fallback for net card when cumulative totals are zero
+  const instantConsumed = (data as any)?.Consumption_kWh ?? (data as any)?.CN?.kWh ?? 0;
+  const instantGenerated = (data as any)?.Generation_kWh ?? (data as any)?.GN?.kWh ?? 0;
+  const instantNet = instantGenerated - instantConsumed;
+  
+  const showCumulative = totals.totalConsumed > 0 || totals.totalGenerated > 0;
+
   return (
     <div className="dashboard-container">
       <div className="card greeting-card">
@@ -157,9 +164,9 @@ const Dashboard: React.FC = () => {
 
       {isSolarDevice && (
         <NetSummaryCard
-          netEnergy={totals.net}
-          totalConsumed={totals.totalConsumed}
-          totalGenerated={totals.totalGenerated}
+          netEnergy={showCumulative ? totals.net : instantNet}
+          totalConsumed={showCumulative ? totals.totalConsumed : instantConsumed}
+          totalGenerated={showCumulative ? totals.totalGenerated : instantGenerated}
         />
       )}
       {isNonSolarDevice && <div style={{ marginBottom: '16px' }} />}
