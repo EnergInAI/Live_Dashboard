@@ -1,8 +1,8 @@
 interface Aggregates {
-  lastConsumed: number;     // last recorded Consumption kWh reading
-  lastGenerated: number;    // last recorded Generation kWh reading
-  totalConsumed: number;    // cumulative total for the day
-  totalGenerated: number;   // cumulative total for the day
+  baseConsumed: number;     // first kWh (consumption) seen for the day
+  baseGenerated: number;    // first kWh (generation) seen for the day
+  totalConsumed: number;    // derived from current - base
+  totalGenerated: number;   // derived from current - base
   net: number;
   netType: string;
   lastUpdateDate: string;   // yyyy-mm-dd in IST for daily reset
@@ -19,9 +19,9 @@ function getCurrentDateIST(): string {
   return istTime.toISOString().slice(0, 10);
 }
 
-export function updateTotals(deviceId: string, data: any) {
-  // Accept both flattened and nested shapes
-  const consumption =
+// Helper: read kWh from flattened or nested shapes
+function readKWh(data: any) {
+  const c =
     parseFloat(
       data?.Consumption_kWh ??
       data?.CN?.kWh ??
@@ -29,7 +29,7 @@ export function updateTotals(deviceId: string, data: any) {
       ''
     ) || 0;
 
-  const generation =
+  const g =
     parseFloat(
       data?.Generation_kWh ??
       data?.GN?.kWh ??
@@ -37,60 +37,45 @@ export function updateTotals(deviceId: string, data: any) {
       ''
     ) || 0;
 
+  return { c, g };
+}
+
+export function updateTotals(deviceId: string, data: any) {
+  const { c, g } = readKWh(data);
   const currentDate = getCurrentDateIST();
 
-  // Initialize device entry on first reading
-  if (!deviceTotals[deviceId]) {
+  // Initialize or roll new day baseline
+  if (!deviceTotals[deviceId] || deviceTotals[deviceId].lastUpdateDate !== currentDate) {
     deviceTotals[deviceId] = {
-      lastConsumed: consumption,
-      lastGenerated: generation,
+      baseConsumed: c,
+      baseGenerated: g,
       totalConsumed: 0,
       totalGenerated: 0,
       net: 0,
       netType: '',
       lastUpdateDate: currentDate,
     };
-    return; // first reading sets baseline; next readings add deltas
   }
 
-  const totals = deviceTotals[deviceId];
+  const agg = deviceTotals[deviceId];
 
-  // New day: reset cumulative totals and baseline
-  if (totals.lastUpdateDate !== currentDate) {
-    totals.lastConsumed = consumption;
-    totals.lastGenerated = generation;
-    totals.totalConsumed = 0;
-    totals.totalGenerated = 0;
-    totals.net = 0;
-    totals.netType = '';
-    totals.lastUpdateDate = currentDate;
-    return; // wait for next reading to accumulate deltas
-  }
-
-  // Accumulate only positive deltas from meter-style readings
-  if (consumption > totals.lastConsumed) {
-    totals.totalConsumed += consumption - totals.lastConsumed;
-    totals.lastConsumed = consumption;
-  }
-  if (generation > totals.lastGenerated) {
-    totals.totalGenerated += generation - totals.lastGenerated;
-    totals.lastGenerated = generation;
-  }
+  // Compute totals as deltas from baseline; clamp at 0
+  agg.totalConsumed = Math.max(0, c - agg.baseConsumed);
+  agg.totalGenerated = Math.max(0, g - agg.baseGenerated);
 
   // Compute net and status
-  totals.net = totals.totalGenerated - totals.totalConsumed;
-  totals.netType =
-    totals.net > 0 ? 'export' : totals.net < 0 ? 'import' : 'neutral';
+  agg.net = agg.totalGenerated - agg.totalConsumed;
+  agg.netType = agg.net > 0 ? 'export' : agg.net < 0 ? 'import' : 'neutral';
 }
 
 export function getTotals(deviceId: string) {
-  const totals = deviceTotals[deviceId];
-  return totals
+  const a = deviceTotals[deviceId];
+  return a
     ? {
-        totalConsumed: totals.totalConsumed,
-        totalGenerated: totals.totalGenerated,
-        net: totals.net,
-        netType: totals.netType,
+        totalConsumed: a.totalConsumed,
+        totalGenerated: a.totalGenerated,
+        net: a.net,
+        netType: a.netType,
       }
     : {
         totalConsumed: 0,
