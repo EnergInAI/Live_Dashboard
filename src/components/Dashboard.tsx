@@ -27,7 +27,7 @@ const Dashboard: React.FC = () => {
   const [accessDenied, setAccessDenied] = useState(false);
   const [username, setUsername] = useState<string>('Guest User');
 
-  // Net totals updated every 10 minutes
+  // Net totals shown in the card (UI throttled every 10 minutes)
   const [totals, setTotals] = useState({
     net: 0,
     netType: '',
@@ -39,6 +39,7 @@ const Dashboard: React.FC = () => {
   const lastNetUpdateRef = useRef<number>(0);
   const initialLoadDone = useRef(false);
 
+  // Persist URL values
   useEffect(() => {
     if (urlDeviceId) {
       localStorage.setItem('deviceId', urlDeviceId);
@@ -50,6 +51,7 @@ const Dashboard: React.FC = () => {
     }
   }, [urlDeviceId, urlToken]);
 
+  // Access validation
   useEffect(() => {
     if (!deviceId || !token) {
       setAccessDenied(true);
@@ -64,6 +66,7 @@ const Dashboard: React.FC = () => {
     setAccessDenied(false);
   }, [deviceId, token]);
 
+  // Fetch live data every 10 seconds; update net on first load then every 10 minutes
   useEffect(() => {
     if (!deviceId || accessDenied) return;
 
@@ -76,15 +79,13 @@ const Dashboard: React.FC = () => {
           throw new Error(`API error: ${res.status} ${errText}`);
         }
         const responseData = await res.json();
-        console.log('✅ API response:', responseData);
-
         if (!Array.isArray(responseData) || responseData.length === 0) {
           setError('No data received from API');
           setLoading(false);
           return;
         }
 
-        const latestData = responseData[0];
+        const latestData = responseData[0] as EnergyPayload;
         const newTimestamp = latestData.timestamp;
         const prevTimestamp = lastTimestampRef.current;
 
@@ -97,24 +98,29 @@ const Dashboard: React.FC = () => {
 
           const prefix = deviceId.slice(0, 4).toUpperCase();
           if (prefix === 'ENSN' || prefix === 'ENTN') {
-            updateTotals(deviceId, latestData);
+            // Normalize for aggregator; leaves all live tiles untouched
+            const normalized = {
+              Consumption_kWh:
+                (latestData as any)?.Consumption_kWh ??
+                (latestData as any)?.CN?.kWh,
+              Generation_kWh:
+                (latestData as any)?.Generation_kWh ??
+                (latestData as any)?.GN?.kWh,
+            };
+            updateTotals(deviceId, normalized);
 
             const now = Date.now();
-
-            // Immediately update totals on first fetch
             if (!initialLoadDone.current) {
               setTotals(getTotals(deviceId));
               initialLoadDone.current = true;
               lastNetUpdateRef.current = now;
-            }
-
-            // Throttle further updates
-            else if (now - lastNetUpdateRef.current > 600000) {
+            } else if (now - lastNetUpdateRef.current > 600000) {
               setTotals(getTotals(deviceId));
               lastNetUpdateRef.current = now;
             }
           }
         }
+
         setLoading(false);
       } catch (err: any) {
         console.error('❌ Fetch error:', err);
@@ -128,6 +134,7 @@ const Dashboard: React.FC = () => {
     return () => clearInterval(interval);
   }, [deviceId, accessDenied]);
 
+  // UI states
   if (accessDenied) return <AccessDenied />;
   if (error) return <div className="error"><h3>{error}</h3></div>;
   if (loading)
