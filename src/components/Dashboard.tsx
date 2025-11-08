@@ -198,10 +198,10 @@ const Dashboard: React.FC = () => {
         </div>
       )}
 
-      <div className="timestamp">
-        Last updated: {formattedTimestamp} 
-      </div>
-    </div>
+<div className="timestamp">
+  Last updated: {formattedTimestamp}
+</div>
+</div>
   );
 };
 
