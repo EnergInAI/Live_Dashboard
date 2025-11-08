@@ -24,6 +24,7 @@ const Dashboard: React.FC = () => {
   const [accessDenied, setAccessDenied] = useState(false);
   const [username, setUsername] = useState<string>('Guest User');
 
+  // Totals for NetSummaryCard
   const [totals, setTotals] = useState({
     net: 0,
     netType: '',
@@ -31,9 +32,10 @@ const Dashboard: React.FC = () => {
     totalGenerated: 0,
   });
 
+  // Keep track of last timestamp for avoiding redundant updates
   const lastTimestampRef = useRef<string | null>(null);
 
-  // Store deviceId locally for reloads
+  // Save deviceId in localStorage
   useEffect(() => {
     if (urlDeviceId) {
       localStorage.setItem('deviceId', urlDeviceId);
@@ -41,7 +43,7 @@ const Dashboard: React.FC = () => {
     }
   }, [urlDeviceId]);
 
-  // Validate access via userMap
+  // Access validation
   useEffect(() => {
     if (!deviceId || !urlToken) {
       setAccessDenied(true);
@@ -57,51 +59,51 @@ const Dashboard: React.FC = () => {
     setUsername(deviceEntry.name);
   }, [deviceId, urlToken]);
 
-  // Fetch data periodically
+  // Fetch from API every 10 seconds
   useEffect(() => {
     if (!deviceId || accessDenied) return;
 
-    const fetchData = () => {
-      fetch(
-        `https://lqqhlwp62i.execute-api.ap-south-1.amazonaws.com/prod_v1/devicedata?deviceId=${deviceId}&limit=1`,
-        { cache: 'no-store' }
-      )
-        .then(async (res) => {
-          if (!res.ok) {
-            const errText = await res.text();
-            throw new Error(`API error: ${res.status} ${errText}`);
-          }
-          return res.json();
-        })
-        .then((responseData) => {
-          if (!Array.isArray(responseData) || responseData.length === 0) {
-            setError('No data received from API');
-            setLoading(false);
-            return;
-          }
+    const fetchData = async () => {
+      try {
+        const res = await fetch(
+          `https://lqqhlwp62i.execute-api.ap-south-1.amazonaws.com/prod_v1/devicedata?deviceId=${deviceId}&limit=1`,
+          { cache: 'no-store' }
+        );
 
-          // ✅ The API already returns flat fields
-          const latestData = responseData[0];
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(`API error: ${res.status} ${errText}`);
+        }
 
-          // Only update if it's a new reading
-          if (latestData.timestamp !== lastTimestampRef.current) {
-            lastTimestampRef.current = latestData.timestamp;
-            setData(latestData);
+        const responseData = await res.json();
+        console.log('✅ API response:', responseData);
 
-            const prefix = deviceId.slice(0, 4).toUpperCase();
-            if (prefix === 'ENSN' || prefix === 'ENTN') {
-              updateTotals(deviceId, latestData);
-              setTotals(getTotals(deviceId));
-            }
-          }
-
+        if (!Array.isArray(responseData) || responseData.length === 0) {
+          setError('No data received from API');
           setLoading(false);
-        })
-        .catch((err) => {
-          console.error('Fetch error:', err);
-          setError(err.message);
-          setLoading(false);
-        });
+          return;
+        }
+
+        const latestData = responseData[0];
+
+        // Only update if timestamp changed
+        if (latestData.timestamp !== lastTimestampRef.current) {
+          lastTimestampRef.current = latestData.timestamp;
+          setData(latestData);
+
+          const prefix = deviceId.slice(0, 4).toUpperCase();
+          if (prefix === 'ENSN' || prefix === 'ENTN') {
+            updateTotals(deviceId, latestData);
+            setTotals(getTotals(deviceId));
+          }
+        }
+
+        setLoading(false);
+      } catch (err: any) {
+        console.error('❌ Fetch error:', err);
+        setError(err.message);
+        setLoading(false);
+      }
     };
 
     fetchData();
@@ -112,12 +114,17 @@ const Dashboard: React.FC = () => {
   // UI states
   if (accessDenied) return <AccessDenied />;
   if (error) return <div className="error"><h3>{error}</h3></div>;
-  if (loading) return <div className="loading">Loading data for device: <strong>{deviceId}</strong>...</div>;
+  if (loading) return (
+    <div className="loading">
+      Loading data for device: <strong>{deviceId}</strong>...
+    </div>
+  );
   if (!data) return <div className="no-data">No data available</div>;
 
   const prefix = deviceId?.slice(0, 4)?.toUpperCase() || '';
   const isSolarDevice = prefix === 'ENSN' || prefix === 'ENTN';
-  const isNonSolarDevice = prefix === 'ENSS' || prefix === 'ENTA' || prefix === 'ENSA';
+  const isNonSolarDevice =
+    prefix === 'ENSS' || prefix === 'ENTA' || prefix === 'ENSA';
   const formattedTimestamp = new Date(data.timestamp as string).toLocaleString();
 
   return (
@@ -155,7 +162,7 @@ const Dashboard: React.FC = () => {
 
       {isNonSolarDevice && <div style={{ marginBottom: '16px' }} />}
 
-      {/* Consumption Section */}
+      {/* Consumption */}
       <div className="card metrics-card">
         <h2 className="section-title consumption-title">Consumption</h2>
         <div className="metrics-grid">
@@ -168,7 +175,7 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Generation Section */}
+      {/* Generation */}
       {isSolarDevice && (
         <div className="card metrics-card">
           <h2 className="section-title generation-title">Generation</h2>
@@ -183,12 +190,13 @@ const Dashboard: React.FC = () => {
         </div>
       )}
 
-      <div className="timestamp">Last updated: {formattedTimestamp}</div>
+      <div className="timestamp">
+        Last updated: {formattedTimestamp}
+      </div>
     </div>
   );
 };
 
-// Metric Component
 interface MetricProps {
   label: string;
   value: number | string | null | undefined;
