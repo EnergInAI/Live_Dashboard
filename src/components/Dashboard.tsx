@@ -65,7 +65,8 @@ const Dashboard: React.FC = () => {
 
     const fetchData = () => {
       fetch(
-        `https://lqqhlwp62i.execute-api.ap-south-1.amazonaws.com/prod_v1/devicedata?deviceId=${deviceId}&limit=1`
+        `https://lqqhlwp62i.execute-api.ap-south-1.amazonaws.com/prod_v1/devicedata?deviceId=${deviceId}&limit=1`,
+        { cache: 'no-store' } // ✅ Prevent cached responses
       )
         .then(async (res) => {
           if (!res.ok) {
@@ -84,14 +85,31 @@ const Dashboard: React.FC = () => {
           const latestData = responseData[0];
           setLoading(false);
 
-          // ✅ Only update if new data timestamp is newer than the last one
+          // ✅ Flatten CN (Consumption) and GN (Generation) data
+          const formattedData = {
+            ...latestData,
+            Consumption_V: latestData.CN?.V,
+            Consumption_I: latestData.CN?.I,
+            Consumption_P: latestData.CN?.P,
+            Consumption_kWh: latestData.CN?.kWh,
+            Consumption_PF: latestData.CN?.PF,
+            Consumption_F: latestData.CN?.F,
+            Generation_V: latestData.GN?.V,
+            Generation_I: latestData.GN?.I,
+            Generation_P: latestData.GN?.P,
+            Generation_kWh: latestData.GN?.kWh,
+            Generation_PF: latestData.GN?.PF,
+            Generation_F: latestData.GN?.F,
+          };
+
+          // ✅ Only update if new data timestamp is newer
           if (latestData.timestamp !== lastTimestampRef.current) {
             lastTimestampRef.current = latestData.timestamp;
-            setData(latestData);
+            setData(formattedData);
 
             const prefix = deviceId.slice(0, 4).toUpperCase();
             if (prefix === 'ENSN' || prefix === 'ENTN') {
-              updateTotals(deviceId, latestData);
+              updateTotals(deviceId, formattedData);
               setTotals(getTotals(deviceId));
             }
           }
@@ -109,9 +127,9 @@ const Dashboard: React.FC = () => {
     // ⏱️ Refresh every 10 seconds
     const interval = setInterval(fetchData, 10000);
 
-    // Cleanup on unmount or when device changes
+    // Cleanup
     return () => clearInterval(interval);
-  }, [deviceId, accessDenied]); // ✅ no dependency warning
+  }, [deviceId, accessDenied]);
 
   // UI States
   if (accessDenied) return <AccessDenied />;
@@ -173,11 +191,7 @@ const Dashboard: React.FC = () => {
           <Metric label="Voltage (V)" value={data.Consumption_V ?? data.V} unit="V" />
           <Metric label="Current (I)" value={data.Consumption_I ?? data.I} unit="A" />
           <Metric label="Power (P)" value={data.Consumption_P ?? data.P} unit="W" />
-          <Metric
-            label="Units (kWh)"
-            value={data.Consumption_kWh ?? data.kWh}
-            unit="kWh"
-          />
+          <Metric label="Units (kWh)" value={data.Consumption_kWh ?? data.kWh} unit="kWh" />
           <Metric label="Power Factor (PF)" value={data.Consumption_PF ?? data.PF} />
           <Metric label="Frequency (F)" value={data.Consumption_F ?? data.F} unit="Hz" />
         </div>
@@ -198,10 +212,10 @@ const Dashboard: React.FC = () => {
         </div>
       )}
 
-<div className="timestamp">
-  Last updated: {formattedTimestamp}
-</div>
-</div>
+      <div className="timestamp">
+        Last updated: {formattedTimestamp}
+      </div>
+    </div>
   );
 };
 
