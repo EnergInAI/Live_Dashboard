@@ -27,6 +27,7 @@ const Dashboard: React.FC = () => {
   const [accessDenied, setAccessDenied] = useState(false);
   const [username, setUsername] = useState<string>('Guest User');
 
+  // Net totals shown in the card
   const [totals, setTotals] = useState({
     net: 0,
     netType: '',
@@ -36,7 +37,6 @@ const Dashboard: React.FC = () => {
 
   const lastTimestampRef = useRef<string | null>(null);
 
-  // Persist URL params in localStorage
   useEffect(() => {
     if (urlDeviceId) {
       localStorage.setItem('deviceId', urlDeviceId);
@@ -48,7 +48,6 @@ const Dashboard: React.FC = () => {
     }
   }, [urlDeviceId, urlToken]);
 
-  // Access validation against userMap
   useEffect(() => {
     if (!deviceId || !token) {
       setAccessDenied(true);
@@ -63,7 +62,6 @@ const Dashboard: React.FC = () => {
     setAccessDenied(false);
   }, [deviceId, token]);
 
-  // Fetch data every 10 seconds, update net immediately each time
   useEffect(() => {
     if (!deviceId || accessDenied) return;
 
@@ -92,7 +90,6 @@ const Dashboard: React.FC = () => {
 
           const prefix = deviceId.slice(0, 4).toUpperCase();
           if (prefix === 'ENSN' || prefix === 'ENTN') {
-            // Normalize kWh for aggregator
             const normalized = {
               Consumption_kWh:
                 (latestData as any)?.Consumption_kWh ??
@@ -132,6 +129,10 @@ const Dashboard: React.FC = () => {
   const isNonSolarDevice = prefix === 'ENSS' || prefix === 'ENTA' || prefix === 'ENSA';
   const formattedTimestamp = new Date(data.timestamp as string).toLocaleString();
 
+  const instantNet =
+    ((data as any)?.Generation_kWh ?? (data as any)?.GN?.kWh ?? 0) -
+    ((data as any)?.Consumption_kWh ?? (data as any)?.CN?.kWh ?? 0);
+
   return (
     <div className="dashboard-container">
       <div className="card greeting-card">
@@ -157,7 +158,7 @@ const Dashboard: React.FC = () => {
 
       {isSolarDevice && (
         <NetSummaryCard
-          netEnergy={totals.net}
+          netEnergy={(totals.totalConsumed + totals.totalGenerated) > 0 ? totals.net : instantNet}
           totalConsumed={totals.totalConsumed}
           totalGenerated={totals.totalGenerated}
         />
