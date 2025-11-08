@@ -24,7 +24,6 @@ const Dashboard: React.FC = () => {
   const [accessDenied, setAccessDenied] = useState(false);
   const [username, setUsername] = useState<string>('Guest User');
 
-  // Totals for NetSummaryCard
   const [totals, setTotals] = useState({
     net: 0,
     netType: '',
@@ -32,10 +31,9 @@ const Dashboard: React.FC = () => {
     totalGenerated: 0,
   });
 
-  // Keep track of last timestamp for avoiding redundant updates
   const lastTimestampRef = useRef<string | null>(null);
 
-  // Save deviceId in localStorage
+  // Persist deviceId
   useEffect(() => {
     if (urlDeviceId) {
       localStorage.setItem('deviceId', urlDeviceId);
@@ -59,16 +57,14 @@ const Dashboard: React.FC = () => {
     setUsername(deviceEntry.name);
   }, [deviceId, urlToken]);
 
-  // Fetch from API every 10 seconds
+  // Fetch every 10s
   useEffect(() => {
     if (!deviceId || accessDenied) return;
 
     const fetchData = async () => {
       try {
-        const res = await fetch(
-          `https://lqqhlwp62i.execute-api.ap-south-1.amazonaws.com/prod_v1/devicedata?deviceId=${deviceId}&limit=1`,
-          { cache: 'no-store' }
-        );
+        const url = `https://lqqhlwp62i.execute-api.ap-south-1.amazonaws.com/prod_v1/devicedata?deviceId=${deviceId}&limit=1&_ts=${Date.now()}`;
+        const res = await fetch(url, { cache: 'no-store' });
 
         if (!res.ok) {
           const errText = await res.text();
@@ -85,10 +81,15 @@ const Dashboard: React.FC = () => {
         }
 
         const latestData = responseData[0];
+        const newTimestamp = latestData.timestamp;
+        const prevTimestamp = lastTimestampRef.current;
 
-        // Only update if timestamp changed
-        if (latestData.timestamp !== lastTimestampRef.current) {
-          lastTimestampRef.current = latestData.timestamp;
+        // Compare timestamps as actual Date objects
+        if (
+          !prevTimestamp ||
+          new Date(newTimestamp).getTime() > new Date(prevTimestamp).getTime()
+        ) {
+          lastTimestampRef.current = newTimestamp;
           setData(latestData);
 
           const prefix = deviceId.slice(0, 4).toUpperCase();
@@ -114,11 +115,12 @@ const Dashboard: React.FC = () => {
   // UI states
   if (accessDenied) return <AccessDenied />;
   if (error) return <div className="error"><h3>{error}</h3></div>;
-  if (loading) return (
-    <div className="loading">
-      Loading data for device: <strong>{deviceId}</strong>...
-    </div>
-  );
+  if (loading)
+    return (
+      <div className="loading">
+        Loading data for device: <strong>{deviceId}</strong>...
+      </div>
+    );
   if (!data) return <div className="no-data">No data available</div>;
 
   const prefix = deviceId?.slice(0, 4)?.toUpperCase() || '';
@@ -129,7 +131,6 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="dashboard-container">
-      {/* Greeting Card */}
       <div className="card greeting-card">
         <div className="greeting-layout">
           <div className="greeting-logo">
@@ -151,7 +152,6 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Net Summary Card */}
       {isSolarDevice && (
         <NetSummaryCard
           netEnergy={totals.net}
@@ -159,7 +159,6 @@ const Dashboard: React.FC = () => {
           totalGenerated={totals.totalGenerated}
         />
       )}
-
       {isNonSolarDevice && <div style={{ marginBottom: '16px' }} />}
 
       {/* Consumption */}
@@ -190,9 +189,7 @@ const Dashboard: React.FC = () => {
         </div>
       )}
 
-      <div className="timestamp">
-        Last updated: {formattedTimestamp}
-      </div>
+      <div className="timestamp">Last updated: {formattedTimestamp}</div>
     </div>
   );
 };
