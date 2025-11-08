@@ -35,9 +35,8 @@ const Dashboard: React.FC = () => {
   });
 
   const lastTimestampRef = useRef<string | null>(null);
-  const lastNetUpdateRef = useRef<number>(0);
-  const initialLoadDone = useRef(false);
 
+  // Persist URL params in localStorage
   useEffect(() => {
     if (urlDeviceId) {
       localStorage.setItem('deviceId', urlDeviceId);
@@ -49,6 +48,7 @@ const Dashboard: React.FC = () => {
     }
   }, [urlDeviceId, urlToken]);
 
+  // Access validation against userMap
   useEffect(() => {
     if (!deviceId || !token) {
       setAccessDenied(true);
@@ -63,6 +63,7 @@ const Dashboard: React.FC = () => {
     setAccessDenied(false);
   }, [deviceId, token]);
 
+  // Fetch data every 10 seconds, update net immediately each time
   useEffect(() => {
     if (!deviceId || accessDenied) return;
 
@@ -85,15 +86,13 @@ const Dashboard: React.FC = () => {
         const newTimestamp = latestData.timestamp;
         const prevTimestamp = lastTimestampRef.current;
 
-        if (
-          !prevTimestamp ||
-          new Date(newTimestamp).getTime() > new Date(prevTimestamp).getTime()
-        ) {
+        if (!prevTimestamp || new Date(newTimestamp).getTime() > new Date(prevTimestamp).getTime()) {
           lastTimestampRef.current = newTimestamp;
           setData(latestData);
 
           const prefix = deviceId.slice(0, 4).toUpperCase();
           if (prefix === 'ENSN' || prefix === 'ENTN') {
+            // Normalize kWh for aggregator
             const normalized = {
               Consumption_kWh:
                 (latestData as any)?.Consumption_kWh ??
@@ -103,19 +102,9 @@ const Dashboard: React.FC = () => {
                 (latestData as any)?.GN?.kWh,
             };
             updateTotals(deviceId, normalized);
-
-            const now = Date.now();
-            if (!initialLoadDone.current) {
-              setTotals(getTotals(deviceId));
-              initialLoadDone.current = true;
-              lastNetUpdateRef.current = now;
-            } else if (now - lastNetUpdateRef.current > 600000) {
-              setTotals(getTotals(deviceId));
-              lastNetUpdateRef.current = now;
-            }
+            setTotals(getTotals(deviceId));
           }
         }
-
         setLoading(false);
       } catch (err: any) {
         console.error('❌ Fetch error:', err);
@@ -123,7 +112,6 @@ const Dashboard: React.FC = () => {
         setLoading(false);
       }
     };
-
     fetchData();
     const interval = setInterval(fetchData, 10000);
     return () => clearInterval(interval);

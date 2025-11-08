@@ -1,11 +1,11 @@
 interface Aggregates {
-  baseConsumed: number;     // first kWh (consumption) seen for the day
-  baseGenerated: number;    // first kWh (generation) seen for the day
-  totalConsumed: number;    // derived from current - base
-  totalGenerated: number;   // derived from current - base
+  baseConsumed: number; 
+  baseGenerated: number;
+  totalConsumed: number;
+  totalGenerated: number;
   net: number;
   netType: string;
-  lastUpdateDate: string;   // yyyy-mm-dd in IST for daily reset
+  lastUpdateDate: string; 
 }
 
 const deviceTotals: Record<string, Aggregates> = {};
@@ -13,27 +13,13 @@ const deviceTotals: Record<string, Aggregates> = {};
 function getCurrentDateIST(): string {
   const date = new Date();
   const utc = date.getTime() + date.getTimezoneOffset() * 60000;
-  const istTime = new Date(utc + 330 * 60000); // IST +5:30
+  const istTime = new Date(utc + 330 * 60000);
   return istTime.toISOString().slice(0, 10);
 }
 
 function readKWh(data: any) {
-  const c =
-    parseFloat(
-      data?.Consumption_kWh ??
-      data?.CN?.kWh ??
-      data?.consumption_kWh ??
-      ''
-    ) || 0;
-
-  const g =
-    parseFloat(
-      data?.Generation_kWh ??
-      data?.GN?.kWh ??
-      data?.generation_kWh ??
-      ''
-    ) || 0;
-
+  const c = parseFloat(data?.Consumption_kWh ?? data?.CN?.kWh ?? '') || 0;
+  const g = parseFloat(data?.Generation_kWh ?? data?.GN?.kWh ?? '') || 0;
   return { c, g };
 }
 
@@ -55,6 +41,7 @@ export function updateTotals(deviceId: string, data: any) {
 
   const agg = deviceTotals[deviceId];
 
+  // Simply compute difference from baseline each update, no accumulate logic
   agg.totalConsumed = Math.max(0, c - agg.baseConsumed);
   agg.totalGenerated = Math.max(0, g - agg.baseGenerated);
 
@@ -63,12 +50,12 @@ export function updateTotals(deviceId: string, data: any) {
 }
 
 export function getTotals(deviceId: string) {
-  const a = deviceTotals[deviceId];
-  return a ? {
-    totalConsumed: a.totalConsumed,
-    totalGenerated: a.totalGenerated,
-    net: a.net,
-    netType: a.netType,
+  const agg = deviceTotals[deviceId];
+  return agg ? {
+    totalConsumed: agg.totalConsumed,
+    totalGenerated: agg.totalGenerated,
+    net: agg.net,
+    netType: agg.netType,
   } : {
     totalConsumed: 0,
     totalGenerated: 0,
