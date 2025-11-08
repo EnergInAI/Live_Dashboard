@@ -27,7 +27,6 @@ const Dashboard: React.FC = () => {
   const [accessDenied, setAccessDenied] = useState(false);
   const [username, setUsername] = useState<string>('Guest User');
 
-  // Net totals shown in the card
   const [totals, setTotals] = useState({
     net: 0,
     netType: '',
@@ -98,6 +97,7 @@ const Dashboard: React.FC = () => {
                 (latestData as any)?.Generation_kWh ??
                 (latestData as any)?.GN?.kWh,
             };
+
             updateTotals(deviceId, normalized);
             setTotals(getTotals(deviceId));
           }
@@ -129,10 +129,6 @@ const Dashboard: React.FC = () => {
   const isNonSolarDevice = prefix === 'ENSS' || prefix === 'ENTA' || prefix === 'ENSA';
   const formattedTimestamp = new Date(data.timestamp as string).toLocaleString();
 
-  const instantNet =
-    ((data as any)?.Generation_kWh ?? (data as any)?.GN?.kWh ?? 0) -
-    ((data as any)?.Consumption_kWh ?? (data as any)?.CN?.kWh ?? 0);
-
   return (
     <div className="dashboard-container">
       <div className="card greeting-card">
@@ -158,7 +154,7 @@ const Dashboard: React.FC = () => {
 
       {isSolarDevice && (
         <NetSummaryCard
-          netEnergy={(totals.totalConsumed + totals.totalGenerated) > 0 ? totals.net : instantNet}
+          netEnergy={totals.net}
           totalConsumed={totals.totalConsumed}
           totalGenerated={totals.totalGenerated}
         />

@@ -1,11 +1,11 @@
 interface Aggregates {
-  baseConsumed: number; 
-  baseGenerated: number;
-  totalConsumed: number;
-  totalGenerated: number;
+  baseConsumed: number;     // first kWh consumption baseline
+  baseGenerated: number;    // first kWh generation baseline
+  totalConsumed: number;    // current - baseline consumption
+  totalGenerated: number;   // current - baseline generation
   net: number;
   netType: string;
-  lastUpdateDate: string; 
+  lastUpdateDate: string;   // date string yyyy-mm-dd IST for daily reset
 }
 
 const deviceTotals: Record<string, Aggregates> = {};
@@ -18,8 +18,22 @@ function getCurrentDateIST(): string {
 }
 
 function readKWh(data: any) {
-  const c = parseFloat(data?.Consumption_kWh ?? data?.CN?.kWh ?? '') || 0;
-  const g = parseFloat(data?.Generation_kWh ?? data?.GN?.kWh ?? '') || 0;
+  const c =
+    parseFloat(
+      data?.Consumption_kWh ??
+      data?.CN?.kWh ??
+      data?.consumption_kWh ??
+      ''
+    ) || 0;
+
+  const g =
+    parseFloat(
+      data?.Generation_kWh ??
+      data?.GN?.kWh ??
+      data?.generation_kWh ??
+      ''
+    ) || 0;
+
   return { c, g };
 }
 
@@ -41,7 +55,7 @@ export function updateTotals(deviceId: string, data: any) {
 
   const agg = deviceTotals[deviceId];
 
-  // Simply compute difference from baseline each update, no accumulate logic
+  // Compute deltas (totals) based on baseline
   agg.totalConsumed = Math.max(0, c - agg.baseConsumed);
   agg.totalGenerated = Math.max(0, g - agg.baseGenerated);
 
