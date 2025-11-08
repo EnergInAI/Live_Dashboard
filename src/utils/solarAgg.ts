@@ -1,20 +1,17 @@
 interface Aggregates {
-  lastConsumed: number;     // last recorded Consumption_kWh
-  lastGenerated: number;    // last recorded Generation_kWh
-  totalConsumed: number;    // cumulative total for the day
-  totalGenerated: number;   // cumulative total for the day
+  lastConsumed: number;
+  lastGenerated: number;
+  totalConsumed: number;
+  totalGenerated: number;
   net: number;
   netType: string;
-  lastUpdateDate: string;   // track date for daily reset
+  lastUpdateDate: string;
 }
 
-// Store per-device aggregates
 const deviceTotals: Record<string, Aggregates> = {};
 
-// Helper to get current date string in IST timezone (yyyy-mm-dd)
 function getCurrentDateIST(): string {
   const date = new Date();
-  // Offset IST +5:30 from UTC (330 minutes)
   const utc = date.getTime() + (date.getTimezoneOffset() * 60000);
   const istTime = new Date(utc + (330 * 60000));
   return istTime.toISOString().slice(0, 10);
@@ -26,7 +23,6 @@ export function updateTotals(deviceId: string, data: any) {
   const currentDate = getCurrentDateIST();
 
   if (!deviceTotals[deviceId]) {
-    // Initialize device entry with current date
     deviceTotals[deviceId] = {
       lastConsumed: consumption,
       lastGenerated: generation,
@@ -36,7 +32,7 @@ export function updateTotals(deviceId: string, data: any) {
       netType: '',
       lastUpdateDate: currentDate,
     };
-    return; // first reading just initializes last values and date
+    return;
   }
 
   const totals = deviceTotals[deviceId];
@@ -50,6 +46,7 @@ export function updateTotals(deviceId: string, data: any) {
     totals.net = 0;
     totals.netType = '';
     totals.lastUpdateDate = currentDate;
+    return; // Don't accumulate on reset, wait for next reading
   }
 
   // Only add positive differences (incremental energy)
@@ -70,7 +67,6 @@ export function updateTotals(deviceId: string, data: any) {
 }
 
 export function getTotals(deviceId: string) {
-  // Always return a full object shape
   const totals = deviceTotals[deviceId];
   return totals
     ? {
