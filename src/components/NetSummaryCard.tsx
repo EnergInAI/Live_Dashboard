@@ -1,61 +1,53 @@
 import React from 'react';
 import '../styles/NetSummaryCard.css';
 
-
 interface NetSummaryCardProps {
-  netEnergy: number;          // Net energy (kWh) = Generation - Consumption
-  totalConsumed: number;      // Total Consumption (kWh)
-  totalGenerated: number;     // Total Generation (kWh)
-  lastUpdated?: string;       // Optional: timestamp string (optional display later)
+  netEnergy: number;       // instantaneous net (last reading window)
+  totalImport: number;     // daily import accumulation
+  totalExport: number;     // daily export accumulation
+  lastUpdated?: string;
 }
 
 const NetSummaryCard: React.FC<NetSummaryCardProps> = ({
   netEnergy,
-  totalConsumed,
-  totalGenerated,
+  totalImport,
+  totalExport,
   lastUpdated,
 }) => {
-  // Determine status and color scheme
   const isExporting = netEnergy > 0;
   const isImporting = netEnergy < 0;
+
   const netLabel = isExporting ? 'NET EXPORT' : isImporting ? 'NET IMPORT' : 'BALANCED';
   const netArrow = isExporting ? '↑' : isImporting ? '↓' : '↔';
 
-  // Determine color class for card heading
-  const statusClass = isExporting
-    ? 'export'
-    : isImporting
-    ? 'import'
-    : 'neutral';
+  const statusClass = isExporting ? 'export' : isImporting ? 'import' : 'neutral';
 
   return (
-    <div className="card net-summary-card">
-      <div className="net-card-left">
-        <h2 className={`net-heading ${statusClass}`}>
-          {netArrow} {netLabel}
-        </h2>
-        <div className="net-value">
-          {Math.abs(netEnergy).toFixed(2)} kWh
-        </div>
-        <p className="net-comment">
-          {isExporting
-            ? 'You are currently exporting power to the grid.'
-            : isImporting
-            ? 'You are currently drawing power from the grid.'
-            : 'Your generation and consumption are balanced.'}
-        </p>
+    <div className={`net-summary-card ${statusClass}`}>
+      <h3 className={`net-heading ${statusClass}`}>
+        {netArrow} {netLabel}
+      </h3>
+
+      <div className="net-value">
+        {Math.abs(netEnergy).toFixed(2)} kWh
       </div>
 
-      <div className="net-card-right">
-        <div className="net-totals">
-          <div className="total-line">
-            <span className="total-label orange-text">Total Consumed</span>
-            <span className="total-value">{totalConsumed.toFixed(2)} kWh</span>
-          </div>
-          <div className="total-line">
-            <span className="total-label green-text">Total Generated</span>
-            <span className="total-value">{totalGenerated.toFixed(2)} kWh</span>
-          </div>
+      <p className="net-description">
+        {isExporting
+          ? 'You are currently exporting power to the grid.'
+          : isImporting
+          ? 'You are currently drawing power from the grid.'
+          : 'Your generation and consumption are balanced.'}
+      </p>
+
+      <div className="totals-section">
+        <div className="total-item">
+          <div className="total-label">Total Import Today</div>
+          <div className="total-value">{totalImport.toFixed(2)} kWh</div>
+        </div>
+        <div className="total-item">
+          <div className="total-label">Total Export Today</div>
+          <div className="total-value">{totalExport.toFixed(2)} kWh</div>
         </div>
       </div>
     </div>
