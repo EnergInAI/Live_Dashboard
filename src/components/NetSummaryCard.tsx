@@ -12,33 +12,38 @@ const NetSummaryCard: React.FC<NetSummaryCardProps> = ({
   totalImport,
   totalExport,
 }) => {
-  const isImport = instantNet < -0.001;
   const isExport = instantNet > 0.001;
-  // const isNeutral = !isImport && !isExport;
+  const isImport = instantNet < -0.001;
 
-  const netText = isImport
-    ? 'Importing from Grid'
-    : isExport
-    ? 'Exporting to Grid'
-    : 'Balanced';
+  const netTypeText = isExport
+    ? 'NET EXPORT'
+    : isImport
+    ? 'NET IMPORT'
+    : 'BALANCED';
 
-  const netClass = isImport
-    ? 'net-import'
-    : isExport
+  const netClass = isExport
     ? 'net-export'
+    : isImport
+    ? 'net-import'
     : 'net-neutral';
+
+  const netSubtext = isExport
+    ? 'You are currently exporting power to the grid.'
+    : isImport
+    ? 'You are currently importing power from the grid.'
+    : 'Power flow is balanced.';
 
   const netValue = Math.abs(instantNet).toFixed(3);
 
   return (
     <div className="card net-summary-card">
-      <h2 className="section-title">Net Energy Flow</h2>
-      <div className="net-summary-content">
-        <div className={`net-value ${netClass}`}>
-          {netValue} kWh
-          <span className="net-status-text"> ({netText})</span>
+      <div className="net-summary-header">
+        <div className={`net-status ${netClass}`}>
+          <h2>{netTypeText}</h2>
+          <h3>{netValue} kWh</h3>
+          <p>{netSubtext}</p>
         </div>
-        <div className="net-totals">
+        <div className="net-summary-totals">
           <div className="net-total">
             <div className="label">Total Import Today</div>
             <div className="value">{totalImport.toFixed(3)} kWh</div>
