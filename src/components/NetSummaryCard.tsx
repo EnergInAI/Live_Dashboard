@@ -14,7 +14,7 @@ const NetSummaryCard: React.FC<NetSummaryCardProps> = ({
 }) => {
   const isImport = instantNet < -0.001;
   const isExport = instantNet > 0.001;
-  const isNeutral = !isImport && !isExport;
+  // const isNeutral = !isImport && !isExport;
 
   const netText = isImport
     ? 'Importing from Grid'
