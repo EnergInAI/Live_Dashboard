@@ -1,27 +1,25 @@
 interface Aggregates {
-  baseConsumed: number;
-  baseGenerated: number;
-  prevConsumed: number;      // NEW
-  prevGenerated: number;     // NEW
-  totalConsumed: number;
-  totalGenerated: number;
-  totalImport: number;       // NEW
-  totalExport: number;       // NEW
+  baseConsumed: number;     // First kWh consumption reading for the day
+  baseGenerated: number;    // First kWh generation reading for the day
+  totalConsumed: number;    // Daily cumulative consumption (current - base)
+  totalGenerated: number;   // Daily cumulative generation (current - base)
   net: number;
   netType: string;
-  lastUpdateDate: string;
-  lastTimestamp: number;     // NEW
+  lastUpdateDate: string;   // Date string "YYYY-MM-DD" for daily reset
 }
 
+// In-memory store for device aggregates
 const deviceTotals: Record<string, Aggregates> = {};
 
+// Helper to get the current date in IST timezone
 function getCurrentDateIST(): string {
   const date = new Date();
   const utc = date.getTime() + date.getTimezoneOffset() * 60000;
-  const istTime = new Date(utc + 330 * 60000);
+  const istTime = new Date(utc + 330 * 60000); // IST is UTC+5:30
   return istTime.toISOString().slice(0, 10);
 }
 
+// Helper to safely read kWh values from various possible payload structures
 function readKWh(data: any) {
   const c =
     parseFloat(
@@ -30,6 +28,7 @@ function readKWh(data: any) {
       data?.consumption_kWh ??
       ''
     ) || 0;
+
   const g =
     parseFloat(
       data?.Generation_kWh ??
@@ -37,95 +36,49 @@ function readKWh(data: any) {
       data?.generation_kWh ??
       ''
     ) || 0;
+
   return { c, g };
 }
 
 export function updateTotals(deviceId: string, data: any) {
-  if (!deviceId || !data) return;
-
   const { c, g } = readKWh(data);
   const currentDate = getCurrentDateIST();
-  const now = Date.now();
 
-  // First reading today or new day -> set baseline
+  // If it's a new day or the first reading ever, set a new baseline
   if (!deviceTotals[deviceId] || deviceTotals[deviceId].lastUpdateDate !== currentDate) {
     deviceTotals[deviceId] = {
       baseConsumed: c,
       baseGenerated: g,
-      prevConsumed: c,
-      prevGenerated: g,
       totalConsumed: 0,
       totalGenerated: 0,
-      totalImport: 0,
-      totalExport: 0,
       net: 0,
-      netType: 'neutral',
+      netType: '',
       lastUpdateDate: currentDate,
-      lastTimestamp: now,
     };
-    return;
   }
 
   const agg = deviceTotals[deviceId];
 
-  // Avoid duplicate/back-in-time updates
-  if (now <= agg.lastTimestamp) return;
-
-  // Deltas from previous reading
-  const dC = c - agg.prevConsumed;
-  const dG = g - agg.prevGenerated;
-
-  // Handle meter resets/rollover
-  if (dC < 0 || dG < 0) {
-    agg.baseConsumed = c;
-    agg.baseGenerated = g;
-    agg.prevConsumed = c;
-    agg.prevGenerated = g;
-    agg.lastTimestamp = now;
-    return;
-  }
-
-  // Ignore tiny noise under 1 Wh
-  const EPS = 0.001;
-  if (Math.abs(dC) >= EPS || Math.abs(dG) >= EPS) {
-    const dNet = dG - dC;
-    if (dNet > 0) {
-      agg.totalExport += dNet;
-    } else if (dNet < 0) {
-      agg.totalImport += Math.abs(dNet);
-    }
-  }
-
-  // Update daily consumed/generated from baseline
+  // Always calculate the daily total as the difference from the baseline
   agg.totalConsumed = Math.max(0, c - agg.baseConsumed);
   agg.totalGenerated = Math.max(0, g - agg.baseGenerated);
+
+  // Recalculate net energy
   agg.net = agg.totalGenerated - agg.totalConsumed;
   agg.netType = agg.net > 0 ? 'export' : agg.net < 0 ? 'import' : 'neutral';
-
-  // Move prev pointers
-  agg.prevConsumed = c;
-  agg.prevGenerated = g;
-  agg.lastTimestamp = now;
 }
 
 export function getTotals(deviceId: string) {
   const agg = deviceTotals[deviceId];
-  if (!agg || agg.lastUpdateDate !== getCurrentDateIST()) {
-    return {
-      totalConsumed: 0,
-      totalGenerated: 0,
-      totalImport: 0,
-      totalExport: 0,
-      net: 0,
-      netType: 'neutral',
-    };
-  }
-  return {
+  return agg ? {
     totalConsumed: agg.totalConsumed,
     totalGenerated: agg.totalGenerated,
-    totalImport: Math.max(0, agg.totalImport),
-    totalExport: Math.max(0, agg.totalExport),
     net: agg.net,
     netType: agg.netType,
+  } : {
+    totalConsumed: 0,
+    totalGenerated: 0,
+    net: 0,
+    netType: '',
   };
 }
