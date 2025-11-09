@@ -14,7 +14,7 @@ const NetSummaryCard: React.FC<NetSummaryCardProps> = ({
 }) => {
   const isExporting = instantNet > 0.001;
   const isImporting = instantNet < -0.001;
-  const isNeutral = !isExporting && !isImporting; // ✅ keep this
+  // const isNeutral = !isExporting && !isImporting; // ✅ keep this
 
   // ✅ use isNeutral in class assignment
   const headingClass = isExporting
