@@ -23,9 +23,9 @@ const NetSummaryCard: React.FC<NetSummaryCardProps> = ({
     ? 'NET IMPORT'
     : 'BALANCED';
   const commentText = isExport
-    ? 'You are currently exporting power to the grid.'
+    ? 'You have exported power to the grid.'
     : isImport
-    ? 'You are currently importing power from the grid.'
+    ? 'You have imported power from the grid.'
     : 'Power flow is balanced.';
 
   const netValue = Math.abs(instantNet).toFixed(3);
