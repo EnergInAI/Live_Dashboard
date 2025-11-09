@@ -14,20 +14,15 @@ const NetSummaryCard: React.FC<NetSummaryCardProps> = ({
 }) => {
   const isExport = instantNet > 0.001;
   const isImport = instantNet < -0.001;
+  const isNeutral = !isImport && !isExport;
 
-  const netTypeText = isExport
+  const netType = isExport ? 'export' : isImport ? 'import' : 'neutral';
+  const headingText = isExport
     ? 'NET EXPORT'
     : isImport
     ? 'NET IMPORT'
     : 'BALANCED';
-
-  const netClass = isExport
-    ? 'net-export'
-    : isImport
-    ? 'net-import'
-    : 'net-neutral';
-
-  const netSubtext = isExport
+  const commentText = isExport
     ? 'You are currently exporting power to the grid.'
     : isImport
     ? 'You are currently importing power from the grid.'
@@ -36,21 +31,26 @@ const NetSummaryCard: React.FC<NetSummaryCardProps> = ({
   const netValue = Math.abs(instantNet).toFixed(3);
 
   return (
-    <div className="card net-summary-card">
-      <div className="net-summary-header">
-        <div className={`net-status ${netClass}`}>
-          <h2>{netTypeText}</h2>
-          <h3>{netValue} kWh</h3>
-          <p>{netSubtext}</p>
-        </div>
-        <div className="net-summary-totals">
-          <div className="net-total">
-            <div className="label">Total Import Today</div>
-            <div className="value">{totalImport.toFixed(3)} kWh</div>
+    <div className="net-summary-card">
+      {/* Left Section */}
+      <div className="net-card-left">
+        <h2 className={`net-heading ${netType}`}>
+          {isExport && '↑'} {isImport && '↓'} {headingText}
+        </h2>
+        <div className="net-value">{netValue} kWh</div>
+        <div className="net-comment">{commentText}</div>
+      </div>
+
+      {/* Right Section */}
+      <div className="net-card-right">
+        <div className="net-totals">
+          <div className="total-line">
+            <div className="total-label orange-text">Total Import Today</div>
+            <div className="total-value">{totalImport.toFixed(3)} kWh</div>
           </div>
-          <div className="net-total">
-            <div className="label">Total Export Today</div>
-            <div className="value">{totalExport.toFixed(3)} kWh</div>
+          <div className="total-line">
+            <div className="total-label green-text">Total Export Today</div>
+            <div className="total-value">{totalExport.toFixed(3)} kWh</div>
           </div>
         </div>
       </div>
