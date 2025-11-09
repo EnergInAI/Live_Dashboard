@@ -16,7 +16,6 @@ const NetSummaryCard: React.FC<NetSummaryCardProps> = ({
 }) => {
   // Determine current energy flow status
   const isExporting = instantNet > 0;
-  const isImporting = instantNet < 0;
   const isBalanced = Math.abs(instantNet) < 0.01; // Within 10W threshold
 
   const netLabel = isBalanced
