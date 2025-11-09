@@ -14,8 +14,9 @@ const NetSummaryCard: React.FC<NetSummaryCardProps> = ({
 }) => {
   const isExporting = instantNet > 0.001;
   const isImporting = instantNet < -0.001;
-  const isNeutral = !isExporting && !isImporting;
+  const isNeutral = !isExporting && !isImporting; // ✅ keep this
 
+  // ✅ use isNeutral in class assignment
   const headingClass = isExporting
     ? 'export'
     : isImporting
@@ -38,6 +39,7 @@ const NetSummaryCard: React.FC<NetSummaryCardProps> = ({
     <div className="net-summary-card">
       {/* Left: Instantaneous Net */}
       <div className="net-card-left">
+        {/* ✅ headingClass handles import/export/neutral colors */}
         <h2 className={`net-heading ${headingClass}`}>{directionText}</h2>
         <div className="net-value">{Math.abs(instantNet).toFixed(3)} kWh</div>
         <div className="net-comment">{comment}</div>

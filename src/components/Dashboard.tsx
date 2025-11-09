@@ -3,7 +3,7 @@ import userMap from '../userMap';
 import AccessDenied from './AccessDenied';
 import NetSummaryCard from './NetSummaryCard';
 import '../styles/Dashboard.css';
-import { updateTotals, getTotals } from '../utils/solarAgg';
+import { updateTotals } from '../utils/solarAgg';
 
 interface EnergyPayload {
   latestGeneration_kWh: number;
