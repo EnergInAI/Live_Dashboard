@@ -3,182 +3,220 @@ import userMap from '../userMap';
 import AccessDenied from './AccessDenied';
 import NetSummaryCard from './NetSummaryCard';
 import '../styles/Dashboard.css';
-import { updateTotals } from '../utils/solarAgg';
+import { updateTotals, getTotals } from '../utils/solarAgg';
 
 interface EnergyPayload {
-  latestGeneration_kWh: number;
-  latestConsumption_kWh: number;
-  timestamp: string;
   [key: string]: number | string | null;
+  timestamp: string;
 }
 
 const Dashboard: React.FC = () => {
-  const [energyData, setEnergyData] = useState<EnergyPayload | null>(null);
-  const [instantNet, setInstantNet] = useState<number>(0);
-  const [totalImport, setTotalImport] = useState<number>(0);
-  const [totalExport, setTotalExport] = useState<number>(0);
-  const [totalGenerated, setTotalGenerated] = useState<number>(0);
-  const [totalConsumed, setTotalConsumed] = useState<number>(0);
-  const [hasAccess, setHasAccess] = useState<boolean>(true);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [lastUpdated, setLastUpdated] = useState<string>('');
+  const queryParams = new URLSearchParams(window.location.search);
+  const urlDeviceId = queryParams.get('deviceId');
+  const urlToken = queryParams.get('token');
 
-  // use number | null for browser setInterval id
-  const intervalRef = useRef<number | null>(null);
+  const [deviceId, setDeviceId] = useState<string | null>(
+    urlDeviceId || localStorage.getItem('deviceId')
+  );
+  const [token, setToken] = useState<string | null>(
+    urlToken || localStorage.getItem('token')
+  );
+  const [data, setData] = useState<EnergyPayload | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [accessDenied, setAccessDenied] = useState(false);
+  const [username, setUsername] = useState<string>('Guest User');
 
-  const fetchLatestData = async (): Promise<EnergyPayload | null> => {
-    try {
-      const response = await fetch('/api/latest-energy'); // adapt endpoint if needed
-      if (!response.ok) throw new Error('Network error');
-      const data = await response.json();
-      return data as EnergyPayload;
-    } catch (err) {
-      // keep error reporting minimal; acceptable in CI
-      return null;
+  const [totals, setTotals] = useState({
+    net: 0,
+    netType: '',
+    totalConsumed: 0,
+    totalGenerated: 0,
+  });
+
+  const lastTimestampRef = useRef<string | null>(null);
+
+  // Persist URL params in localStorage
+  useEffect(() => {
+    if (urlDeviceId) {
+      localStorage.setItem('deviceId', urlDeviceId);
+      setDeviceId(urlDeviceId);
     }
-  };
+    if (urlToken) {
+      localStorage.setItem('token', urlToken);
+      setToken(urlToken);
+    }
+  }, [urlDeviceId, urlToken]);
 
+  // Access validation against userMap
   useEffect(() => {
-    const loadInitialData = async () => {
-      setLoading(true);
-      const initial = await fetchLatestData();
-      if (initial) {
-        setEnergyData(initial);
+    if (!deviceId || !token) {
+      setAccessDenied(true);
+      return;
+    }
+    const deviceEntry = userMap[deviceId];
+    if (!deviceEntry || deviceEntry.token !== token) {
+      setAccessDenied(true);
+      return;
+    }
+    setUsername(deviceEntry.name);
+    setAccessDenied(false);
+  }, [deviceId, token]);
 
-        const totals = updateTotals(
-          Number(initial.latestGeneration_kWh),
-          Number(initial.latestConsumption_kWh),
-          initial.timestamp
-        );
-
-        setInstantNet(totals.instantNet);
-        setTotalImport(totals.totalImport);
-        setTotalExport(totals.totalExport);
-        setTotalGenerated(totals.totalGenerated);
-        setTotalConsumed(totals.totalConsumed);
-        setLastUpdated(initial.timestamp);
-      }
-      setLoading(false);
-    };
-
-    loadInitialData();
-
-    // Poll every 10 seconds
-    intervalRef.current = window.setInterval(async () => {
-      const latest = await fetchLatestData();
-      if (!latest) return;
-
-      setEnergyData(latest);
-
-      const totals = updateTotals(
-        Number(latest.latestGeneration_kWh),
-        Number(latest.latestConsumption_kWh),
-        latest.timestamp
-      );
-
-      setInstantNet(totals.instantNet);
-      setTotalImport(totals.totalImport);
-      setTotalExport(totals.totalExport);
-      setTotalGenerated(totals.totalGenerated);
-      setTotalConsumed(totals.totalConsumed);
-      setLastUpdated(latest.timestamp);
-    }, 10000);
-
-    return () => {
-      if (intervalRef.current !== null) {
-        window.clearInterval(intervalRef.current);
-      }
-    };
-  }, []);
-
-  // Access check (uses userMap object)
+  // Fetch data every 10 seconds, update net immediately each time
   useEffect(() => {
-    const currentUserId = localStorage.getItem('userId');
-    const userHasAccess =
-      !!currentUserId && Object.prototype.hasOwnProperty.call(userMap, currentUserId);
-    setHasAccess(!!userHasAccess);
-  }, []);
+    if (!deviceId || accessDenied) return;
 
-  if (!hasAccess) {
-    return <AccessDenied />;
-  }
+    const fetchData = async () => {
+      try {
+        const url = `https://lqqhlwp62i.execute-api.ap-south-1.amazonaws.com/prod_v1/devicedata?deviceId=${deviceId}&limit=1&_ts=${Date.now()}`;
+        const res = await fetch(url, { cache: 'no-store' });
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(`API error: ${res.status} ${errText}`);
+        }
+        const responseData = await res.json();
+        if (!Array.isArray(responseData) || responseData.length === 0) {
+          setError('No data received from API');
+          setLoading(false);
+          return;
+        }
 
-  if (loading) {
-    return <div className="loading">Loading Dashboard...</div>;
-  }
+        const latestData = responseData[0] as EnergyPayload;
+        const newTimestamp = latestData.timestamp;
+        const prevTimestamp = lastTimestampRef.current;
 
-  if (!energyData) {
-    return <div className="no-data">No data available</div>;
-  }
+        if (!prevTimestamp || new Date(newTimestamp).getTime() > new Date(prevTimestamp).getTime()) {
+          lastTimestampRef.current = newTimestamp;
+          setData(latestData);
+
+          const prefix = deviceId.slice(0, 4).toUpperCase();
+          if (prefix === 'ENSN' || prefix === 'ENTN') {
+            // Normalize kWh for aggregator
+            const normalized = {
+              Consumption_kWh:
+                (latestData as any)?.Consumption_kWh ??
+                (latestData as any)?.CN?.kWh,
+              Generation_kWh:
+                (latestData as any)?.Generation_kWh ??
+                (latestData as any)?.GN?.kWh,
+            };
+            updateTotals(deviceId, normalized);
+            setTotals(getTotals(deviceId));
+          }
+        }
+        setLoading(false);
+      } catch (err: any) {
+        console.error('❌ Fetch error:', err);
+        setError(err.message);
+        setLoading(false);
+      }
+    };
+    fetchData();
+    const interval = setInterval(fetchData, 10000);
+    return () => clearInterval(interval);
+  }, [deviceId, accessDenied]);
+
+  if (accessDenied) return <AccessDenied />;
+  if (error) return <div className="error"><h3>{error}</h3></div>;
+  if (loading)
+    return (
+      <div className="loading">
+        Loading data for device: <strong>{deviceId}</strong>...
+      </div>
+    );
+  if (!data) return <div className="no-data">No data available</div>;
+
+  const prefix = deviceId?.slice(0, 4)?.toUpperCase() || '';
+  const isSolarDevice = prefix === 'ENSN' || prefix === 'ENTN';
+  const isNonSolarDevice = prefix === 'ENSS' || prefix === 'ENTA' || prefix === 'ENSA';
+  const formattedTimestamp = new Date(data.timestamp as string).toLocaleString();
+
+  // Instant fallback for net card when cumulative totals are zero
+  const instantConsumed = (data as any)?.Consumption_kWh ?? (data as any)?.CN?.kWh ?? 0;
+  const instantGenerated = (data as any)?.Generation_kWh ?? (data as any)?.GN?.kWh ?? 0;
+  const instantNet = instantGenerated - instantConsumed;
+  
+  const showCumulative = totals.totalConsumed > 0 || totals.totalGenerated > 0;
 
   return (
     <div className="dashboard-container">
-      {/* Greeting Section */}
-      <div className="greeting-card">
+      <div className="card greeting-card">
         <div className="greeting-layout">
           <div className="greeting-logo">
-            <img src="/logo.svg" alt="Organization Logo" className="org-logo" />
+            <img src="/logo.png" alt="EnergInAI" className="org-logo" />
           </div>
           <div className="greeting-info">
-            <h1>Welcome to your dashboard</h1>
-            <h3>Monitor your devices right from your phone.</h3>
+            {isSolarDevice ? (
+              <>
+                <h1>Welcome, {username}</h1>
+                <h3>Device ID: {deviceId}</h3>
+              </>
+            ) : (
+              <>
+                <h1>Welcome to your dashboard</h1>
+                <h3>Monitor your devices right from your phone.</h3>
+              </>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Net Summary Card */}
-      <NetSummaryCard
-        instantNet={instantNet}
-        totalImport={totalImport}
-        totalExport={totalExport}
-      />
+      {isSolarDevice && (
+        <NetSummaryCard
+          netEnergy={showCumulative ? totals.net : instantNet}
+          totalConsumed={showCumulative ? totals.totalConsumed : instantConsumed}
+          totalGenerated={showCumulative ? totals.totalGenerated : instantGenerated}
+        />
+      )}
+      {isNonSolarDevice && <div style={{ marginBottom: '16px' }} />}
 
-      {/* Consumption Summary */}
-      <div className="card">
-        <h2 className="section-title consumption-title">Consumption Summary</h2>
+      {/* Consumption */}
+      <div className="card metrics-card">
+        <h2 className="section-title consumption-title">Consumption</h2>
         <div className="metrics-grid">
-          <div className="metric-tile">
-            <div className="metric-label">Total Consumed Today</div>
-            <div className="metric-value">{totalConsumed.toFixed(3)} kWh</div>
-          </div>
-          <div className="metric-tile">
-            <div className="metric-label">Average Load</div>
-            <div className="metric-value">{(totalConsumed / 24).toFixed(2)} kW</div>
-          </div>
-          <div className="metric-tile">
-            <div className="metric-label">Peak Usage</div>
-            <div className="metric-value">{(totalConsumed * 1.2).toFixed(2)} kW</div>
-          </div>
+          <Metric label="Voltage (V)" value={data.Consumption_V} unit="V" />
+          <Metric label="Current (I)" value={data.Consumption_I} unit="A" />
+          <Metric label="Power (P)" value={data.Consumption_P} unit="W" />
+          <Metric label="Units (kWh)" value={data.Consumption_kWh} unit="kWh" />
+          <Metric label="Power Factor (PF)" value={data.Consumption_PF} />
+          <Metric label="Frequency (F)" value={data.Consumption_F} unit="Hz" />
         </div>
       </div>
 
-      {/* Generation Summary */}
-      <div className="card">
-        <h2 className="section-title generation-title">Generation Summary</h2>
-        <div className="metrics-grid">
-          <div className="metric-tile">
-            <div className="metric-label">Total Generated Today</div>
-            <div className="metric-value">{totalGenerated.toFixed(3)} kWh</div>
-          </div>
-          <div className="metric-tile">
-            <div className="metric-label">System Efficiency</div>
-            <div className="metric-value">
-              {((totalGenerated / (totalConsumed + 0.001)) * 100).toFixed(2)}%
-            </div>
-          </div>
-          <div className="metric-tile">
-            <div className="metric-label">CO₂ Offset</div>
-            <div className="metric-value">{(totalGenerated * 0.85).toFixed(2)} kg</div>
+      {/* Generation */}
+      {isSolarDevice && (
+        <div className="card metrics-card">
+          <h2 className="section-title generation-title">Generation</h2>
+          <div className="metrics-grid">
+            <Metric label="Voltage (V)" value={data.Generation_V} unit="V" />
+            <Metric label="Current (I)" value={data.Generation_I} unit="A" />
+            <Metric label="Power (P)" value={data.Generation_P} unit="W" />
+            <Metric label="Units (kWh)" value={data.Generation_kWh} unit="kWh" />
+            <Metric label="Power Factor (PF)" value={data.Generation_PF} />
+            <Metric label="Frequency (F)" value={data.Generation_F} unit="Hz" />
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Timestamp */}
-      <div className="timestamp">
-        Last Updated:{' '}
-        {new Date(lastUpdated).toLocaleString('en-IN', {
-          timeZone: 'Asia/Kolkata',
-        })}
+      <div className="timestamp">Last updated: {formattedTimestamp}</div>
+    </div>
+  );
+};
+
+interface MetricProps {
+  label: string;
+  value: number | string | null | undefined;
+  unit?: string;
+}
+
+const Metric: React.FC<MetricProps> = ({ label, value, unit }) => {
+  const displayValue = value === null || value === undefined || value === '' ? '-' : value;
+  return (
+    <div className="metric-tile">
+      <div className="metric-label">{label}</div>
+      <div className="metric-value">
+        {displayValue} {unit}
       </div>
     </div>
   );
