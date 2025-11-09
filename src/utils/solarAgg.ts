@@ -1,105 +1,87 @@
 // src/utils/solarAgg.ts
 
-interface DeviceTotals {
-  lastGen: number;
-  lastCons: number;
-  lastTimestamp: string;
+interface Totals {
   totalImport: number;
   totalExport: number;
-  totalGenerated: number;
-  totalConsumed: number;
-  instantNet: number;
+  lastTimestamp: string | null;
+  lastResetDate: string | null;
 }
 
-const deviceData: Record<string, DeviceTotals> = {};
+const totalsMap: Record<string, Totals> = {};
 
-// Helper: get current IST date (yyyy-mm-dd)
-const getISTDate = (): string => {
+// Helper: get today's date key (IST)
+const getTodayKey = (): string => {
   const now = new Date();
-  const istOffset = 5.5 * 60 * 60 * 1000;
-  const ist = new Date(now.getTime() + istOffset);
-  return ist.toISOString().split('T')[0];
+  now.setHours(now.getHours() + 5); // adjust UTC → IST (approx)
+  now.setMinutes(now.getMinutes() + 30);
+  return now.toISOString().split('T')[0];
 };
 
-// Helper: store daily key for resets
-let currentISTDay = getISTDate();
-
-export function updateTotals(
-  deviceId: string,
-  payload: { Generation_kWh: number; Consumption_kWh: number; timestamp: string }
-) {
-  const { Generation_kWh, Consumption_kWh, timestamp } = payload;
-
-  // Reset all devices at midnight IST
-  const todayIST = getISTDate();
-  if (todayIST !== currentISTDay) {
-    Object.keys(deviceData).forEach((id) => {
-      deviceData[id].totalImport = 0;
-      deviceData[id].totalExport = 0;
-      deviceData[id].totalGenerated = 0;
-      deviceData[id].totalConsumed = 0;
-      deviceData[id].lastGen = 0;
-      deviceData[id].lastCons = 0;
-    });
-    currentISTDay = todayIST;
+// ✅ Load saved totals from localStorage
+const loadTotals = (deviceId: string): Totals => {
+  const stored = localStorage.getItem(`totals_${deviceId}`);
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored);
+      totalsMap[deviceId] = parsed;
+      return parsed;
+    } catch {
+      console.warn('⚠️ Failed to parse saved totals');
+    }
   }
-
-  if (!deviceData[deviceId]) {
-    deviceData[deviceId] = {
-      lastGen: Generation_kWh,
-      lastCons: Consumption_kWh,
-      lastTimestamp: timestamp,
-      totalImport: 0,
-      totalExport: 0,
-      totalGenerated: Generation_kWh,
-      totalConsumed: Consumption_kWh,
-      instantNet: Generation_kWh - Consumption_kWh,
-    };
-    return;
-  }
-
-  const dev = deviceData[deviceId];
-
-  // Skip duplicate timestamps
-  if (timestamp === dev.lastTimestamp) return;
-
-  // Handle rollover (meter reset)
-  const genDelta = Generation_kWh >= dev.lastGen ? Generation_kWh - dev.lastGen : Generation_kWh;
-  const consDelta = Consumption_kWh >= dev.lastCons ? Consumption_kWh - dev.lastCons : Consumption_kWh;
-
-  const deltaNet = genDelta - consDelta;
-
-  // Filter noise
-  if (Math.abs(deltaNet) < 0.001) return;
-
-  // Accumulate daily import/export
-  if (deltaNet > 0) dev.totalExport += deltaNet;
-  else dev.totalImport += Math.abs(deltaNet);
-
-  dev.totalGenerated += genDelta;
-  dev.totalConsumed += consDelta;
-  dev.instantNet = Generation_kWh - Consumption_kWh;
-  dev.lastGen = Generation_kWh;
-  dev.lastCons = Consumption_kWh;
-  dev.lastTimestamp = timestamp;
-}
-
-export function getTotals(deviceId: string) {
-  const dev = deviceData[deviceId];
-  if (!dev) {
-    return {
-      instantNet: 0,
-      totalImport: 0,
-      totalExport: 0,
-      totalGenerated: 0,
-      totalConsumed: 0,
-    };
-  }
+  // fallback
   return {
-    instantNet: dev.instantNet,
-    totalImport: Math.max(0, dev.totalImport),
-    totalExport: Math.max(0, dev.totalExport),
-    totalGenerated: Math.max(0, dev.totalGenerated),
-    totalConsumed: Math.max(0, dev.totalConsumed),
+    totalImport: 0,
+    totalExport: 0,
+    lastTimestamp: null,
+    lastResetDate: getTodayKey(),
   };
-}
+};
+
+// ✅ Save updated totals to localStorage
+const saveTotals = (deviceId: string, totals: Totals) => {
+  localStorage.setItem(`totals_${deviceId}`, JSON.stringify(totals));
+};
+
+// ✅ Initialize device totals on load
+export const getTotals = (deviceId: string): Totals => {
+  if (!totalsMap[deviceId]) {
+    totalsMap[deviceId] = loadTotals(deviceId);
+  }
+  return totalsMap[deviceId];
+};
+
+// ✅ Update totals incrementally
+export const updateTotals = (
+  deviceId: string,
+  data: { Consumption_kWh?: number; Generation_kWh?: number; timestamp?: string }
+) => {
+  const totals = getTotals(deviceId);
+  const today = getTodayKey();
+
+  // Reset if new day
+  if (totals.lastResetDate !== today) {
+    totals.totalImport = 0;
+    totals.totalExport = 0;
+    totals.lastResetDate = today;
+  }
+
+  const cons = data.Consumption_kWh ?? 0;
+  const gen = data.Generation_kWh ?? 0;
+
+  const diff = gen - cons;
+
+  // Update net import/export
+  if (diff > 0) {
+    totals.totalExport += diff;
+  } else {
+    totals.totalImport += Math.abs(diff);
+  }
+
+  totals.lastTimestamp = data.timestamp || new Date().toISOString();
+
+  // Save persistently
+  saveTotals(deviceId, totals);
+
+  return totals;
+};
