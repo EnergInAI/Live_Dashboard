@@ -101,7 +101,7 @@ const Dashboard: React.FC = () => {
             updateTotals(deviceId, {
               Generation_kWh: currentGen,
               Consumption_kWh: currentCons,
-              timestamp: latestData.timestamp,
+              // timestamp: latestData.timestamp,
             });
 
             const totals = getTotals(deviceId);
