@@ -27,12 +27,9 @@ const Dashboard: React.FC = () => {
   const [accessDenied, setAccessDenied] = useState(false);
   const [username, setUsername] = useState<string>('Guest User');
 
-  const [totals, setTotals] = useState({
-    net: 0,
-    netType: '',
-    totalConsumed: 0,
-    totalGenerated: 0,
-  });
+  const [instantNet, setInstantNet] = useState<number>(0);
+  const [totalImport, setTotalImport] = useState<number>(0);
+  const [totalExport, setTotalExport] = useState<number>(0);
 
   const lastTimestampRef = useRef<string | null>(null);
 
@@ -48,22 +45,22 @@ const Dashboard: React.FC = () => {
     }
   }, [urlDeviceId, urlToken]);
 
-  // Access validation against userMap
+  // Access validation using userMap
   useEffect(() => {
     if (!deviceId || !token) {
       setAccessDenied(true);
       return;
     }
-    const deviceEntry = userMap[deviceId];
-    if (!deviceEntry || deviceEntry.token !== token) {
+    const entry = userMap[deviceId];
+    if (!entry || entry.token !== token) {
       setAccessDenied(true);
       return;
     }
-    setUsername(deviceEntry.name);
+    setUsername(entry.name);
     setAccessDenied(false);
   }, [deviceId, token]);
 
-  // Fetch data every 10 seconds, update net immediately each time
+  // Fetch latest readings every 10s and update instantaneous & daily totals
   useEffect(() => {
     if (!deviceId || accessDenied) return;
 
@@ -71,11 +68,9 @@ const Dashboard: React.FC = () => {
       try {
         const url = `https://lqqhlwp62i.execute-api.ap-south-1.amazonaws.com/prod_v1/devicedata?deviceId=${deviceId}&limit=1&_ts=${Date.now()}`;
         const res = await fetch(url, { cache: 'no-store' });
-        if (!res.ok) {
-          const errText = await res.text();
-          throw new Error(`API error: ${res.status} ${errText}`);
-        }
+        if (!res.ok) throw new Error(`API error: ${res.status}`);
         const responseData = await res.json();
+
         if (!Array.isArray(responseData) || responseData.length === 0) {
           setError('No data received from API');
           setLoading(false);
@@ -86,25 +81,35 @@ const Dashboard: React.FC = () => {
         const newTimestamp = latestData.timestamp;
         const prevTimestamp = lastTimestampRef.current;
 
+        // update only if new data
         if (!prevTimestamp || new Date(newTimestamp).getTime() > new Date(prevTimestamp).getTime()) {
           lastTimestampRef.current = newTimestamp;
           setData(latestData);
 
           const prefix = deviceId.slice(0, 4).toUpperCase();
           if (prefix === 'ENSN' || prefix === 'ENTN') {
-            // Normalize kWh for aggregator
-            const normalized = {
-              Consumption_kWh:
-                (latestData as any)?.Consumption_kWh ??
-                (latestData as any)?.CN?.kWh,
-              Generation_kWh:
-                (latestData as any)?.Generation_kWh ??
-                (latestData as any)?.GN?.kWh,
-            };
-            updateTotals(deviceId, normalized);
-            setTotals(getTotals(deviceId));
+            const currentGen =
+              (latestData as any)?.Generation_kWh ?? (latestData as any)?.GN?.kWh ?? 0;
+            const currentCons =
+              (latestData as any)?.Consumption_kWh ?? (latestData as any)?.CN?.kWh ?? 0;
+
+            // Instantaneous net = current generation - consumption
+            const netNow = currentGen - currentCons;
+            setInstantNet(netNow);
+
+            // Update daily import/export in aggregator
+            updateTotals(deviceId, {
+              Generation_kWh: currentGen,
+              Consumption_kWh: currentCons,
+              timestamp: latestData.timestamp,
+            });
+
+            const totals = getTotals(deviceId);
+            setTotalImport(totals.totalImport);
+            setTotalExport(totals.totalExport);
           }
         }
+
         setLoading(false);
       } catch (err: any) {
         console.error('❌ Fetch error:', err);
@@ -112,6 +117,7 @@ const Dashboard: React.FC = () => {
         setLoading(false);
       }
     };
+
     fetchData();
     const interval = setInterval(fetchData, 10000);
     return () => clearInterval(interval);
@@ -132,13 +138,6 @@ const Dashboard: React.FC = () => {
   const isNonSolarDevice = prefix === 'ENSS' || prefix === 'ENTA' || prefix === 'ENSA';
   const formattedTimestamp = new Date(data.timestamp as string).toLocaleString();
 
-  // Instant fallback for net card when cumulative totals are zero
-  const instantConsumed = (data as any)?.Consumption_kWh ?? (data as any)?.CN?.kWh ?? 0;
-  const instantGenerated = (data as any)?.Generation_kWh ?? (data as any)?.GN?.kWh ?? 0;
-  const instantNet = instantGenerated - instantConsumed;
-  
-  const showCumulative = totals.totalConsumed > 0 || totals.totalGenerated > 0;
-
   return (
     <div className="dashboard-container">
       <div className="card greeting-card">
@@ -147,26 +146,17 @@ const Dashboard: React.FC = () => {
             <img src="/logo.png" alt="EnergInAI" className="org-logo" />
           </div>
           <div className="greeting-info">
-            {isSolarDevice ? (
-              <>
-                <h1>Welcome, {username}</h1>
-                <h3>Device ID: {deviceId}</h3>
-              </>
-            ) : (
-              <>
-                <h1>Welcome to your dashboard</h1>
-                <h3>Monitor your devices right from your phone.</h3>
-              </>
-            )}
+            <h1>Welcome, {username}</h1>
+            <h3>Device ID: {deviceId}</h3>
           </div>
         </div>
       </div>
 
       {isSolarDevice && (
         <NetSummaryCard
-          netEnergy={showCumulative ? totals.net : instantNet}
-          totalConsumed={showCumulative ? totals.totalConsumed : instantConsumed}
-          totalGenerated={showCumulative ? totals.totalGenerated : instantGenerated}
+          instantNet={instantNet}
+          totalImport={totalImport}
+          totalExport={totalExport}
         />
       )}
       {isNonSolarDevice && <div style={{ marginBottom: '16px' }} />}

@@ -1,84 +1,105 @@
-interface Aggregates {
-  baseConsumed: number;     // First kWh consumption reading for the day
-  baseGenerated: number;    // First kWh generation reading for the day
-  totalConsumed: number;    // Daily cumulative consumption (current - base)
-  totalGenerated: number;   // Daily cumulative generation (current - base)
-  net: number;
-  netType: string;
-  lastUpdateDate: string;   // Date string "YYYY-MM-DD" for daily reset
+// src/utils/solarAgg.ts
+
+interface DeviceTotals {
+  lastGen: number;
+  lastCons: number;
+  lastTimestamp: string;
+  totalImport: number;
+  totalExport: number;
+  totalGenerated: number;
+  totalConsumed: number;
+  instantNet: number;
 }
 
-// In-memory store for device aggregates
-const deviceTotals: Record<string, Aggregates> = {};
+const deviceData: Record<string, DeviceTotals> = {};
 
-// Helper to get the current date in IST timezone
-function getCurrentDateIST(): string {
-  const date = new Date();
-  const utc = date.getTime() + date.getTimezoneOffset() * 60000;
-  const istTime = new Date(utc + 330 * 60000); // IST is UTC+5:30
-  return istTime.toISOString().slice(0, 10);
-}
+// Helper: get current IST date (yyyy-mm-dd)
+const getISTDate = (): string => {
+  const now = new Date();
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const ist = new Date(now.getTime() + istOffset);
+  return ist.toISOString().split('T')[0];
+};
 
-// Helper to safely read kWh values from various possible payload structures
-function readKWh(data: any) {
-  const c =
-    parseFloat(
-      data?.Consumption_kWh ??
-      data?.CN?.kWh ??
-      data?.consumption_kWh ??
-      ''
-    ) || 0;
+// Helper: store daily key for resets
+let currentISTDay = getISTDate();
 
-  const g =
-    parseFloat(
-      data?.Generation_kWh ??
-      data?.GN?.kWh ??
-      data?.generation_kWh ??
-      ''
-    ) || 0;
+export function updateTotals(
+  deviceId: string,
+  payload: { Generation_kWh: number; Consumption_kWh: number; timestamp: string }
+) {
+  const { Generation_kWh, Consumption_kWh, timestamp } = payload;
 
-  return { c, g };
-}
-
-export function updateTotals(deviceId: string, data: any) {
-  const { c, g } = readKWh(data);
-  const currentDate = getCurrentDateIST();
-
-  // If it's a new day or the first reading ever, set a new baseline
-  if (!deviceTotals[deviceId] || deviceTotals[deviceId].lastUpdateDate !== currentDate) {
-    deviceTotals[deviceId] = {
-      baseConsumed: c,
-      baseGenerated: g,
-      totalConsumed: 0,
-      totalGenerated: 0,
-      net: 0,
-      netType: '',
-      lastUpdateDate: currentDate,
-    };
+  // Reset all devices at midnight IST
+  const todayIST = getISTDate();
+  if (todayIST !== currentISTDay) {
+    Object.keys(deviceData).forEach((id) => {
+      deviceData[id].totalImport = 0;
+      deviceData[id].totalExport = 0;
+      deviceData[id].totalGenerated = 0;
+      deviceData[id].totalConsumed = 0;
+      deviceData[id].lastGen = 0;
+      deviceData[id].lastCons = 0;
+    });
+    currentISTDay = todayIST;
   }
 
-  const agg = deviceTotals[deviceId];
+  if (!deviceData[deviceId]) {
+    deviceData[deviceId] = {
+      lastGen: Generation_kWh,
+      lastCons: Consumption_kWh,
+      lastTimestamp: timestamp,
+      totalImport: 0,
+      totalExport: 0,
+      totalGenerated: Generation_kWh,
+      totalConsumed: Consumption_kWh,
+      instantNet: Generation_kWh - Consumption_kWh,
+    };
+    return;
+  }
 
-  // Always calculate the daily total as the difference from the baseline
-  agg.totalConsumed = Math.max(0, c - agg.baseConsumed);
-  agg.totalGenerated = Math.max(0, g - agg.baseGenerated);
+  const dev = deviceData[deviceId];
 
-  // Recalculate net energy
-  agg.net = agg.totalGenerated - agg.totalConsumed;
-  agg.netType = agg.net > 0 ? 'export' : agg.net < 0 ? 'import' : 'neutral';
+  // Skip duplicate timestamps
+  if (timestamp === dev.lastTimestamp) return;
+
+  // Handle rollover (meter reset)
+  const genDelta = Generation_kWh >= dev.lastGen ? Generation_kWh - dev.lastGen : Generation_kWh;
+  const consDelta = Consumption_kWh >= dev.lastCons ? Consumption_kWh - dev.lastCons : Consumption_kWh;
+
+  const deltaNet = genDelta - consDelta;
+
+  // Filter noise
+  if (Math.abs(deltaNet) < 0.001) return;
+
+  // Accumulate daily import/export
+  if (deltaNet > 0) dev.totalExport += deltaNet;
+  else dev.totalImport += Math.abs(deltaNet);
+
+  dev.totalGenerated += genDelta;
+  dev.totalConsumed += consDelta;
+  dev.instantNet = Generation_kWh - Consumption_kWh;
+  dev.lastGen = Generation_kWh;
+  dev.lastCons = Consumption_kWh;
+  dev.lastTimestamp = timestamp;
 }
 
 export function getTotals(deviceId: string) {
-  const agg = deviceTotals[deviceId];
-  return agg ? {
-    totalConsumed: agg.totalConsumed,
-    totalGenerated: agg.totalGenerated,
-    net: agg.net,
-    netType: agg.netType,
-  } : {
-    totalConsumed: 0,
-    totalGenerated: 0,
-    net: 0,
-    netType: '',
+  const dev = deviceData[deviceId];
+  if (!dev) {
+    return {
+      instantNet: 0,
+      totalImport: 0,
+      totalExport: 0,
+      totalGenerated: 0,
+      totalConsumed: 0,
+    };
+  }
+  return {
+    instantNet: dev.instantNet,
+    totalImport: Math.max(0, dev.totalImport),
+    totalExport: Math.max(0, dev.totalExport),
+    totalGenerated: Math.max(0, dev.totalGenerated),
+    totalConsumed: Math.max(0, dev.totalConsumed),
   };
 }
