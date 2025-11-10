@@ -27,6 +27,7 @@ const Dashboard: React.FC = () => {
   const [accessDenied, setAccessDenied] = useState(false);
   const [username, setUsername] = useState<string>('Guest User');
 
+  // Changed state variables to match new functionality
   const [dailyNet, setDailyNet] = useState<number>(0);
   const [totalConsumed, setTotalConsumed] = useState<number>(0);
   const [totalGenerated, setTotalGenerated] = useState<number>(0);
@@ -88,10 +89,9 @@ const Dashboard: React.FC = () => {
 
           const prefix = deviceId.slice(0, 4).toUpperCase();
           if (prefix === 'ENSN' || prefix === 'ENTN') {
-            const currentGen =
-              (latestData as any)?.Generation_kWh ?? (latestData as any)?.GN?.kWh ?? 0;
-            const currentCons =
-              (latestData as any)?.Consumption_kWh ?? (latestData as any)?.CN?.kWh ?? 0;
+            // Read directly from API (no nested structure)
+            const currentGen = (latestData as any)?.Generation_kWh ?? 0;
+            const currentCons = (latestData as any)?.Consumption_kWh ?? 0;
 
             // Update daily totals in aggregator
             updateTotals(deviceId, {
@@ -99,6 +99,7 @@ const Dashboard: React.FC = () => {
               Consumption_kWh: currentCons,
             });
 
+            // Get updated daily totals
             const totals = getTotals(deviceId);
             setDailyNet(totals.net);
             setTotalConsumed(totals.totalConsumed);
