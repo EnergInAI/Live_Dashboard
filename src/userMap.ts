@@ -12,9 +12,9 @@ const userMap: {
 
   // 6-pin non-solar - Single Phase
 
-  ENSA001: { name: '—', token: 'xy' },
-  ENSA002: { name: '—', token: 'xy' },
-  ENSA003: { name: '—', token: 'xy' },
+  ENSA001: { name: 'To Your Dashboard', token: 'xy' },
+  ENSA002: { name: 'To Your Dashboard', token: 'xy' },
+  ENSA003: { name: 'To Your Dashboard', token: 'xy' },
 
     // 6-pin non-solar - Triple Phase
 
