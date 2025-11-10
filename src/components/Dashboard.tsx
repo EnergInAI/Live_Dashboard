@@ -27,9 +27,9 @@ const Dashboard: React.FC = () => {
   const [accessDenied, setAccessDenied] = useState(false);
   const [username, setUsername] = useState<string>('Guest User');
 
-  const [instantNet, setInstantNet] = useState<number>(0);
-  const [totalImport, setTotalImport] = useState<number>(0);
-  const [totalExport, setTotalExport] = useState<number>(0);
+  const [dailyNet, setDailyNet] = useState<number>(0);
+  const [totalConsumed, setTotalConsumed] = useState<number>(0);
+  const [totalGenerated, setTotalGenerated] = useState<number>(0);
 
   const lastTimestampRef = useRef<string | null>(null);
 
@@ -60,7 +60,7 @@ const Dashboard: React.FC = () => {
     setAccessDenied(false);
   }, [deviceId, token]);
 
-  // Fetch latest readings every 10s and update instantaneous & daily totals
+  // Fetch latest readings every 10s and update daily totals
   useEffect(() => {
     if (!deviceId || accessDenied) return;
 
@@ -93,20 +93,16 @@ const Dashboard: React.FC = () => {
             const currentCons =
               (latestData as any)?.Consumption_kWh ?? (latestData as any)?.CN?.kWh ?? 0;
 
-            // Instantaneous net = current generation - consumption
-            const netNow = currentGen - currentCons;
-            setInstantNet(netNow);
-
-            // Update daily import/export in aggregator
+            // Update daily totals in aggregator
             updateTotals(deviceId, {
               Generation_kWh: currentGen,
               Consumption_kWh: currentCons,
-              // timestamp: latestData.timestamp,
             });
 
             const totals = getTotals(deviceId);
-            setTotalImport(totals.totalImport);
-            setTotalExport(totals.totalExport);
+            setDailyNet(totals.net);
+            setTotalConsumed(totals.totalConsumed);
+            setTotalGenerated(totals.totalGenerated);
           }
         }
 
@@ -154,9 +150,9 @@ const Dashboard: React.FC = () => {
 
       {isSolarDevice && (
         <NetSummaryCard
-          instantNet={instantNet}
-          totalImport={totalImport}
-          totalExport={totalExport}
+          instantNet={dailyNet}
+          totalConsumed={totalConsumed}
+          totalGenerated={totalGenerated}
         />
       )}
       {isNonSolarDevice && <div style={{ marginBottom: '16px' }} />}
