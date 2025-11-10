@@ -1,23 +1,19 @@
-// ✅ /src/utils/solarAgg.ts — Daily net, consumption & generation tracking with midnight reset
+// ✅ /src/utils/solarAgg.ts — delta-based + daily reset + persistence
 
 interface Totals {
   totalImport: number;
   totalExport: number;
-  totalConsumed: number;
-  totalGenerated: number;
   net: number;
   netType: string;
   lastResetDate: string;
-  lastConsumption: number;
-  lastGeneration: number;
-  baseConsumption: number;
-  baseGeneration: number;
+  lastConsumption?: number;
+  lastGeneration?: number;
 }
 
 const STORAGE_KEY = "solarTotals_v2";
 let totalsMap: Record<string, Totals> = {};
 
-// Load persisted totals on startup
+// ---------- Load persisted totals on startup ----------
 try {
   const saved = localStorage.getItem(STORAGE_KEY);
   if (saved) totalsMap = JSON.parse(saved);
@@ -40,6 +36,7 @@ function isNewDay(lastDate: string): boolean {
   return istToday !== lastDate;
 }
 
+// ---------- Core update logic ----------
 export function updateTotals(
   deviceId: string,
   payload: { Consumption_kWh?: number; Generation_kWh?: number }
@@ -50,72 +47,71 @@ export function updateTotals(
   const istNow = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
   const today = istNow.toISOString().split("T")[0];
 
+  let current = totalsMap[deviceId] || {
+    totalImport: 0,
+    totalExport: 0,
+    net: 0,
+    netType: "",
+    lastResetDate: today,
+    lastConsumption: undefined,
+    lastGeneration: undefined,
+  };
+
+  // Reset at midnight (IST)
+  if (isNewDay(current.lastResetDate)) {
+    current = {
+      totalImport: 0,
+      totalExport: 0,
+      net: 0,
+      netType: "",
+      lastResetDate: today,
+    };
+  }
+
   const consumption = payload.Consumption_kWh ?? 0;
   const generation = payload.Generation_kWh ?? 0;
 
-  let current = totalsMap[deviceId];
+  // Calculate deltas vs last readings
+  const deltaConsumption =
+    current.lastConsumption !== undefined
+      ? Math.max(0, consumption - current.lastConsumption)
+      : 0;
+  const deltaGeneration =
+    current.lastGeneration !== undefined
+      ? Math.max(0, generation - current.lastGeneration)
+      : 0;
 
-  // Initialize or reset at midnight
-  if (!current || isNewDay(current.lastResetDate)) {
-    totalsMap[deviceId] = {
-      totalImport: 0,
-      totalExport: 0,
-      totalConsumed: 0,
-      totalGenerated: 0,
-      net: 0,
-      netType: "neutral",
-      lastResetDate: today,
-      lastConsumption: consumption,
-      lastGeneration: generation,
-      baseConsumption: consumption,
-      baseGeneration: generation,
-    };
-    saveToStorage();
-    return;
-  }
-
-  // Calculate deltas for import/export tracking
-  const deltaConsumption = Math.max(0, consumption - current.lastConsumption);
-  const deltaGeneration = Math.max(0, generation - current.lastGeneration);
-
+  // Accumulate daily totals
   current.totalImport += deltaConsumption;
   current.totalExport += deltaGeneration;
 
-  // Calculate daily totals from baseline
-  current.totalConsumed = Math.max(0, consumption - current.baseConsumption);
-  current.totalGenerated = Math.max(0, generation - current.baseGeneration);
-
-  // Net = generation - consumption (daily accumulating)
-  current.net = current.totalGenerated - current.totalConsumed;
-  current.netType =
-    current.net > 0.001
-      ? "export"
-      : current.net < -0.001
-      ? "import"
-      : "neutral";
-
-  // Update last readings for next delta
+  // Store last readings for next delta calc
   current.lastConsumption = consumption;
   current.lastGeneration = generation;
+
+  // Compute instantaneous net (current reading difference)
+  const netNow = generation - consumption;
+  current.net = netNow;
+  current.netType =
+    netNow > 0
+      ? "Exporting to Grid"
+      : netNow < 0
+      ? "Importing from Grid"
+      : "Neutral";
 
   totalsMap[deviceId] = current;
   saveToStorage();
 }
 
-export function getTotals(deviceId: string): Totals {
-  const defaultTotals: Totals = {
-    totalImport: 0,
-    totalExport: 0,
-    totalConsumed: 0,
-    totalGenerated: 0,
-    net: 0,
-    netType: "neutral",
-    lastResetDate: new Date().toISOString().split("T")[0],
-    lastConsumption: 0,
-    lastGeneration: 0,
-    baseConsumption: 0,
-    baseGeneration: 0,
-  };
-
-  return totalsMap[deviceId] || defaultTotals;
+// ---------- Read-only accessor ----------
+export function getTotals(deviceId: string) {
+  return (
+    totalsMap[deviceId] || {
+      totalImport: 0,
+      totalExport: 0,
+      net: 0,
+      netType: "",
+      lastResetDate: new Date().toISOString().split("T")[0],
+    }
+  );
 }

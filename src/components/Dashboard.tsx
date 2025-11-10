@@ -27,10 +27,9 @@ const Dashboard: React.FC = () => {
   const [accessDenied, setAccessDenied] = useState(false);
   const [username, setUsername] = useState<string>('Guest User');
 
-  // Changed state variables to match new functionality
-  const [dailyNet, setDailyNet] = useState<number>(0);
-  const [totalConsumed, setTotalConsumed] = useState<number>(0);
-  const [totalGenerated, setTotalGenerated] = useState<number>(0);
+  const [instantNet, setInstantNet] = useState<number>(0);
+  const [totalImport, setTotalImport] = useState<number>(0);
+  const [totalExport, setTotalExport] = useState<number>(0);
 
   const lastTimestampRef = useRef<string | null>(null);
 
@@ -61,7 +60,7 @@ const Dashboard: React.FC = () => {
     setAccessDenied(false);
   }, [deviceId, token]);
 
-  // Fetch latest readings every 10s and update daily totals
+  // Fetch latest readings every 10s and update instantaneous & daily totals
   useEffect(() => {
     if (!deviceId || accessDenied) return;
 
@@ -89,21 +88,25 @@ const Dashboard: React.FC = () => {
 
           const prefix = deviceId.slice(0, 4).toUpperCase();
           if (prefix === 'ENSN' || prefix === 'ENTN') {
-            // Read directly from API (no nested structure)
-            const currentGen = (latestData as any)?.Generation_kWh ?? 0;
-            const currentCons = (latestData as any)?.Consumption_kWh ?? 0;
+            const currentGen =
+              (latestData as any)?.Generation_kWh ?? (latestData as any)?.GN?.kWh ?? 0;
+            const currentCons =
+              (latestData as any)?.Consumption_kWh ?? (latestData as any)?.CN?.kWh ?? 0;
 
-            // Update daily totals in aggregator
+            // Instantaneous net = current generation - consumption
+            const netNow = currentGen - currentCons;
+            setInstantNet(netNow);
+
+            // Update daily import/export in aggregator
             updateTotals(deviceId, {
               Generation_kWh: currentGen,
               Consumption_kWh: currentCons,
+              // timestamp: latestData.timestamp,
             });
 
-            // Get updated daily totals
             const totals = getTotals(deviceId);
-            setDailyNet(totals.net);
-            setTotalConsumed(totals.totalConsumed);
-            setTotalGenerated(totals.totalGenerated);
+            setTotalImport(totals.totalImport);
+            setTotalExport(totals.totalExport);
           }
         }
 
@@ -151,9 +154,9 @@ const Dashboard: React.FC = () => {
 
       {isSolarDevice && (
         <NetSummaryCard
-          instantNet={dailyNet}
-          totalConsumed={totalConsumed}
-          totalGenerated={totalGenerated}
+          instantNet={instantNet}
+          totalImport={totalImport}
+          totalExport={totalExport}
         />
       )}
       {isNonSolarDevice && <div style={{ marginBottom: '16px' }} />}

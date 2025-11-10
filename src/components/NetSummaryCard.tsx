@@ -3,17 +3,18 @@ import '../styles/NetSummaryCard.css';
 
 interface NetSummaryCardProps {
   instantNet: number;
-  totalConsumed: number;
-  totalGenerated: number;
+  totalImport: number;
+  totalExport: number;
 }
 
 const NetSummaryCard: React.FC<NetSummaryCardProps> = ({
   instantNet,
-  totalConsumed,
-  totalGenerated,
+  totalImport,
+  totalExport,
 }) => {
   const isExport = instantNet > 0.001;
   const isImport = instantNet < -0.001;
+  // const isNeutral = !isImport && !isExport;
 
   const netType = isExport ? 'export' : isImport ? 'import' : 'neutral';
   const headingText = isExport
@@ -44,12 +45,12 @@ const NetSummaryCard: React.FC<NetSummaryCardProps> = ({
       <div className="net-card-right">
         <div className="net-totals">
           <div className="total-line">
-            <div className="total-label orange-text">Total Consumption Today</div>
-            <div className="total-value">{totalConsumed.toFixed(3)} kWh</div>
+            <div className="total-label orange-text">Total Consumed Today</div>
+            <div className="total-value">{totalImport.toFixed(3)} kWh</div>
           </div>
           <div className="total-line">
-            <div className="total-label green-text">Total Generation Today</div>
-            <div className="total-value">{totalGenerated.toFixed(3)} kWh</div>
+            <div className="total-label green-text">Total Generated Today</div>
+            <div className="total-value">{totalExport.toFixed(3)} kWh</div>
           </div>
         </div>
       </div>
