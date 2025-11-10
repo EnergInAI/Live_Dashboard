@@ -2,50 +2,56 @@ import React from 'react';
 import '../styles/NetSummaryCard.css';
 
 interface NetSummaryCardProps {
-  netEnergy: number;       // This will be the daily accumulating net value
-  totalConsumed: number;   // This is the total consumption for the day
-  totalGenerated: number;  // This is the total generation for the day
-  lastUpdated?: string;
+  instantNet: number;
+  totalImport: number;
+  totalExport: number;
 }
 
 const NetSummaryCard: React.FC<NetSummaryCardProps> = ({
-  netEnergy,
-  totalConsumed,
-  totalGenerated,
-  lastUpdated,
+  instantNet,
+  totalImport,
+  totalExport,
 }) => {
-  // Logic for status (import/export/balanced) remains the same
-  const isExporting = netEnergy > 0;
-  const isImporting = netEnergy < 0;
+  const isExport = instantNet > 0.001;
+  const isImport = instantNet < -0.001;
+  // const isNeutral = !isImport && !isExport;
 
-  const netLabel = isExporting ? 'NET EXPORT' : isImporting ? 'NET IMPORT' : 'BALANCED';
-  const netArrow = isExporting ? '↑' : isImporting ? '↓' : '↔';
-  const statusClass = isExporting ? 'export' : isImporting ? 'import' : 'neutral';
+  const netType = isExport ? 'export' : isImport ? 'import' : 'neutral';
+  const headingText = isExport
+    ? 'NET EXPORT'
+    : isImport
+    ? 'NET IMPORT'
+    : 'BALANCED';
+  const commentText = isExport
+    ? 'You have exported power to the grid.'
+    : isImport
+    ? 'You have imported power from the grid.'
+    : 'Power flow is balanced.';
+
+  const netValue = Math.abs(instantNet).toFixed(3);
 
   return (
-    // The JSX structure and class names are identical to your original file
-    <div className={`net-summary-card ${statusClass}`}>
-      <h3 className={`net-heading ${statusClass}`}>
-        {netArrow} {netLabel}
-      </h3>
-      <div className="net-value">
-        {Math.abs(netEnergy).toFixed(2)} kWh
+    <div className="net-summary-card">
+      {/* Left Section */}
+      <div className="net-card-left">
+        <h2 className={`net-heading ${netType}`}>
+          {isExport && '↑'} {isImport && '↓'} {headingText}
+        </h2>
+        <div className="net-value">{netValue} kWh</div>
+        <div className="net-comment">{commentText}</div>
       </div>
-      <p className="net-description">
-        {isExporting
-          ? 'You are currently exporting power to the grid.'
-          : isImporting
-          ? 'You are currently drawing power from the grid.'
-          : 'Your generation and consumption are balanced.'}
-      </p>
-      <div className="totals-section">
-        <div className="total-item">
-          <div className="total-label">Total Consumption Today</div>
-          <div className="total-value">{totalConsumed.toFixed(2)} kWh</div>
-        </div>
-        <div className="total-item">
-          <div className="total-label">Total Generation Today</div>
-          <div className="total-value">{totalGenerated.toFixed(2)} kWh</div>
+
+      {/* Right Section */}
+      <div className="net-card-right">
+        <div className="net-totals">
+          <div className="total-line">
+            <div className="total-label orange-text">Total Import Today</div>
+            <div className="total-value">{totalImport.toFixed(3)} kWh</div>
+          </div>
+          <div className="total-line">
+            <div className="total-label green-text">Total Export Today</div>
+            <div className="total-value">{totalExport.toFixed(3)} kWh</div>
+          </div>
         </div>
       </div>
     </div>
