@@ -45,11 +45,11 @@ const NetSummaryCard: React.FC<NetSummaryCardProps> = ({
       <div className="net-card-right">
         <div className="net-totals">
           <div className="total-line">
-            <div className="total-label orange-text">Total Consumed Today</div>
+            <div className="total-label orange-text">Total Consumed</div>
             <div className="total-value">{totalImport.toFixed(3)} kWh</div>
           </div>
           <div className="total-line">
-            <div className="total-label green-text">Total Generated Today</div>
+            <div className="total-label green-text">Total Generated</div>
             <div className="total-value">{totalExport.toFixed(3)} kWh</div>
           </div>
         </div>
