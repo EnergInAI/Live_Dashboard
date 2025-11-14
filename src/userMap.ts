@@ -10,6 +10,7 @@ const userMap: {
 
   ENSN001: { name: 'Jyoti Singh', token: '1' },
   ENSN002: { name: 'Testing', token: '1' },
+  ENTN001: { name: 'Testing', token: '1' },
 
   // 6-pin non-solar - Single Phase
 
@@ -20,6 +21,8 @@ const userMap: {
     // 6-pin non-solar - Triple Phase
 
   ENTA001: { name: '—', token: '1' },
+  ENTA002: { name: '—', token: '1' },
+
 };
 
 export default userMap;
