@@ -9,7 +9,8 @@ const userMap: {
   // 12-pin solar - Single Phase
 
   ENSN001: { name: 'Jyoti Singh', token: '1' },
-  ENSN002: { name: 'Testing', token: '1' },
+  ENSN002: { name: 'Santram Ahirwar', token: '1' },
+  
   ENTN001: { name: 'Testing', token: '1' },
 
   // 6-pin non-solar - Single Phase
